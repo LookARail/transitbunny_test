@@ -13,6 +13,7 @@ let animationStartTime = null;
 let currentTrip = null;
 let remainingTrips = [];
 
+
 // === Layers for filtering geometry ===
 let stopsLayer = null;
 let shapesLayer = null;
@@ -1493,4 +1494,5 @@ window.addEventListener('DOMContentLoaded', () => {
     skipAggregatingStopThreshold = this.checked ? 200 : Infinity; 
     plotFilteredStopsAndShapes(filteredTrips);
   });
+
 });

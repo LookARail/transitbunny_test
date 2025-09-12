@@ -1,0 +1,654 @@
+ html, body {
+      height: 100%;
+      margin: 0;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f5f7fa;
+    }
+
+    #map {
+      width: 100vw;
+      height: 100vh;
+    }
+
+    #controls {
+      position: absolute;
+      top: 24px;
+      left: 56px;
+      z-index: 1000;
+      background: rgba(255,255,255,0.97);
+      padding: 18px 22px 14px 22px;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.13);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-width: 340px;
+    }
+
+    #controls label,
+    .main-menu-filters label {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;   /* <-- Ensures left alignment */
+      gap: 2px;
+      font-size: 1rem;
+      margin-bottom: 2px;
+      text-align: left;
+    }
+
+    #controls select {
+      border-radius: 6px;
+      border: 1px solid #b0b0b0;
+      padding: 4px 8px;
+      font-size: 1rem;
+      background: #f9f9f9;
+      transition: border 0.2s;
+    }
+    #controls select:focus {
+      border: 1.5px solid #0078d7;
+      outline: none;
+    }
+
+    button {
+      background: linear-gradient(90deg, #0078d7 60%, #00b4d8 100%);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 7px 16px;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      margin-right: 6px;
+      box-shadow: 0 2px 8px rgba(0,120,215,0.07);
+      transition: background 0.2s, transform 0.1s;
+    }
+    button:hover {
+      background: linear-gradient(90deg, #005fa3 60%, #0096c7 100%);
+      transform: translateY(-2px) scale(1.03);
+    }
+
+    #uploadGtfsBtn {
+      background: linear-gradient(90deg, #43cea2 0%, #185a9d 100%);
+    }
+    #uploadGtfsBtn:hover {
+      background: linear-gradient(90deg, #185a9d 0%, #43cea2 100%);
+    }
+
+    #timeDisplay {
+      font-size: 1.15rem;
+      color: #0078d7;
+      letter-spacing: 1px;
+      margin-left: 10px;
+      font-weight: bold;
+    }
+
+    @media (max-width: 600px) {
+      #controls {
+        min-width: unset;
+        width: 90vw;
+        left: 5vw;
+        top: 10px;
+        padding: 10px;
+        font-size: 0.95rem;
+      }
+      #controls label, #controls select, button {
+        font-size: 0.95rem;
+      }
+    }
+
+    .row-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+    margin-bottom: 4px;
+    }
+
+    .row-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 4px;
+    margin-bottom: 4px;
+    }
+
+    .tooltip {
+    position: relative;
+    cursor: pointer;
+    }
+
+    .tooltiptext {
+    visibility: hidden;
+    width: 300px;
+    background-color: #222;
+    color: #fff;
+    text-align: left;
+    border-radius: 6px;
+    padding: 7px 10px;
+    position: absolute;
+    z-index: 2000;
+    bottom: 10%; /* Position above the label */
+    left: 150%;
+    transform: translateX(-50%);
+    opacity: 0;
+    transition: opacity 0.2s;
+    font-size: 0.95rem;
+    pointer-events: none;
+    }
+
+    .tooltip:hover .tooltiptext {
+    visibility: visible;
+    opacity: 1;
+    }
+
+.main-menu-panel {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  width: 340px;
+  max-width: 95vw;
+  background: rgba(255,255,255,0.96);
+  border-radius: 14px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.13);
+  padding: 18px 18px 14px 18px;
+  z-index: 1200;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.main-menu-title {
+  font-family: 'Fredoka One', 'Segoe UI', Arial, sans-serif;
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin-left: 60px;
+  margin-bottom: 2px;
+  color: #0078d7;
+  letter-spacing: 0.5px;
+}
+
+.main-menu-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#uploadGtfsBtn {
+  background: #0078d7;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 18px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+#uploadGtfsBtn:hover {
+  background: #005fa3;
+}
+
+#progressBarContainer {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 5000;
+  width: 340px;
+  height: 28px;
+  background: #f8fafc;
+  border-radius: 8px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+  display: flex;
+  align-items: center;
+  padding: 4px;
+}
+
+#progressBar {
+  height: 100%;
+  width: 0%;
+  background: #0078d7;
+  border-radius: 6px;
+  transition: width 0.3s;
+}
+
+#progressBarText {
+  position: absolute;
+  width: 100%;
+  text-align: center;
+  left: 0;
+  top: 0;
+  line-height: 28px;
+  font-weight: bold;
+  color: #000000;
+  font-size: 1.1em;
+  pointer-events: none;
+}
+#uiBlockOverlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(255,255,255,0.5);
+  z-index: 4000;
+  cursor: wait;
+}
+
+.main-menu-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.main-menu-filters label {
+  font-size: 0.98rem;
+  color: #222;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.main-menu-filters select {
+  border-radius: 6px;
+  border: 1px solid #cfd8dc;
+  padding: 6px 8px;
+  font-size: 1rem;
+  background: #f8fafc;
+  transition: border 0.2s;
+  align-items: flex-start;
+}
+.main-menu-filters select:focus {
+  border: 1.5px solid #0078d7;
+  outline: none;
+}
+
+#routeStatsTableWrapper,
+#compareServiceDatesTableWrapper {  
+  flex: 1 1 auto;
+  min-height: 0;
+  width: calc(100% - 24px);
+  overflow-y: auto;
+  overflow-x: auto;
+  border-radius: 8px;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+  background: #f8fafc;
+  margin-top: 10px;
+  margin-right: 300px;
+}
+
+#routeStatsTable, #compareServiceDatesTable table {
+  width: 100%;  
+  border-collapse: collapse;
+  font-size: 0.78rem;
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+}
+
+#routeStatsTable th, #routeStatsTable td, #compareServiceDatesTable th, #compareServiceDatesTable td {
+  padding: 8px 12px;
+  text-align: center;
+  border-bottom: 1px solid #e3e8ee;
+  border-right: 1px solid #e3e8ee;   /* Add this line for vertical borders */
+}
+
+#routeStatsTable th, #compareServiceDatesTable th {
+  background: #0078d7;
+  color: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+#routeStatsTable tr:nth-child(even), #compareServiceDatesTable tr:nth-child(even) {
+  background: #f5f7fa;
+}
+
+#routeStatsTable tr:hover, #compareServiceDatesTable tr:hover {
+  background: #e3f2fd;
+}
+
+#GenerateStat {
+  margin-bottom: 10px;
+  margin-top: 0;
+  width: 90%;
+  max-width: 320px;
+  font-size: 1rem;
+  border-radius: 8px;
+}
+
+#ribbonPanel {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 56px;
+  background: rgba(30,34,44,0.97);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+  box-shadow: 0 -2px 12px rgba(0,0,0,0.18);
+  gap: 32px;
+}
+
+.ribbon-icon {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  color: #fff;
+  opacity: 0.7;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.1s;
+}
+.ribbon-icon.active, .ribbon-icon:hover {
+  opacity: 1;
+  background: #0078d7;
+  color: #fff;
+  box-shadow: 0 4px 18px rgba(0,120,215,0.25);
+  transform: scale(1.25) translateY(-8px);
+  font-size: 2.7rem;
+  z-index: 10;
+}
+
+.floating-canvas {
+  position: fixed;
+  z-index: 1500;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Animation controls: bottom left */
+#animationCanvas.floating-canvas {
+  left: 56px;
+  bottom: 80px; /* above the ribbon */
+  width: 380px;
+  max-width: 96vw;
+  max-height: 38vh;
+}
+
+#animationCanvas .row-controls label,
+#animationCanvas .row-controls select,
+#animationCanvas .row-controls span {
+  font-size: 1.2rem;
+  margin-bottom: 8px;
+}
+
+
+/* Graphs: top right */
+#graphsCanvas.floating-canvas {
+  right: 24px;
+  top: 24px;
+  width: 540px;
+  max-width: 96vw;
+  max-height: 90vh;
+}
+
+/* Stats: below graphs, top right */
+#statsCanvas.floating-canvas {
+  right: 24px;
+  top: 340px; /* adjust as needed to be below graphs */
+  width: 540px;
+  max-width: 96vw;
+  max-height: 60vh;
+  display: flex;
+  flex-direction: column;  
+  height: 40vh; /* or another fixed value */
+}
+
+#statsCanvas .canvas-content {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.canvas-header {
+  background: #0078d7;
+  color: #fff;
+  padding: 1px 10px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  display: flex;
+  align-items: flex-end;  
+  flex: 0 0 auto; /* header stays its natural height */
+}
+
+.canvas-header .tab-btn {
+  background: #bad9ff;
+  border: 1.5px solid #b0b8c7;
+  border-bottom: none;
+  color: #0078d7;
+  font-size: 1rem;
+  margin-right: 8px;
+  padding: 7px 18px 6px 18px;
+  border-radius: 8px 8px 0 0;
+  opacity: 0.85;
+  cursor: pointer;
+  transition: 
+    background 0.18s, 
+    opacity 0.18s, 
+    color 0.18s, 
+    box-shadow 0.18s;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+  position: relative;
+  top: 2px;
+}
+
+.canvas-header .tab-btn:hover {
+  background: #f5f7fa;
+  color: #005fa3;
+  opacity: 1;
+  box-shadow: 0 4px 12px rgba(0,120,215,0.10);
+}
+
+.canvas-header .tab-btn.active {
+  background: #fff;
+  color: #0078d7;
+  border-bottom: 2.5px solid #fff;
+  opacity: 1;
+  font-weight: bold;
+  z-index: 2;
+  box-shadow: 0 6px 18px rgba(0,120,215,0.08);
+}
+
+.canvas-content {
+  flex: 1;
+  background: #f8fafc;
+  padding: 18px 10px 10px 10px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.canvas-content canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
+
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+#helpCanvas.floating-canvas {
+  position: fixed; /* so it floats */
+  right: 32px;
+  bottom: 80px; /* above the ribbon */
+  width: 600px;
+  height: 60vh;
+  max-width: 96vw;
+  max-height: 60vh;
+  flex-direction: column; /* stack header + content */
+}
+
+#helpCanvas .canvas-content {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  min-height: 0;
+  padding: 18px 10px 10px 10px;
+  background: #f8fafc;
+  display: block;
+  flex-direction: column;  
+  height: auto;
+}
+#helpCanvas ul {
+  margin-left: 1.2em;
+  margin-bottom: 1em;
+}
+#helpCanvas h3, #helpCanvas h4 {
+  margin-top: 0.5em;
+  margin-bottom: 0em;
+  color: #0078d7;
+}
+
+.resizable-canvas {  
+  resize: both;
+  overflow: auto;
+  min-width: 300px;
+  min-height: 200px;
+  max-width: 100vw;  
+  border: 1px solid #aaa;
+  background: #fff;
+}
+
+.resizer {
+  position: absolute;
+  right: 0; bottom: 0;
+  width: 18px;
+  height: 18px;
+  cursor: se-resize;
+
+  /* Subtle dotted grip */
+  background: 
+    radial-gradient(circle, rgba(0,120,215,0.9) 22%, transparent 24%) 2px 2px/6px 6px;
+  border-radius: 0 0 6px 0;
+  opacity: 0.85;
+
+  /* Light shadow for separation */
+  box-shadow: inset 0 0 3px rgba(0,0,0,0.15);
+  z-index: 10;
+}
+
+.resizer:hover {
+  opacity: 1;
+  background:
+    radial-gradient(circle, rgba(0,120,215,1) 22%, transparent 24%) 2px 2px/6px 6px,
+    radial-gradient(circle, rgba(0,120,215,0.85) 22%, transparent 24%) 6px 6px/6px 6px;
+}
+
+#transitScoreCanvas.floating-canvas {
+  right: 32px;
+  bottom: 80px;
+  width: 380px;
+  max-width: 96vw;
+  max-height: 38vh;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.12);
+  border: 1px solid #ddd;
+}
+
+.close-canvas-btn {
+  margin-left: auto !important;
+  background: none !important;
+  border: none !important;
+  color: #fff !important;
+  font-size: 1.3em !important;
+  cursor: pointer !important;
+  opacity: 0.7 !important;
+  transition: opacity 0.2s !important;
+}
+.close-canvas-btn:hover {
+  opacity: 1 !important;
+  color: #ff5252 !important;
+}
+
+#mainLogo {
+  position: absolute;
+  top: 0px;
+  left: 60px;
+  width: 80px;
+  z-index: 1100;
+  pointer-events: none;
+}
+
+#controls label.inline-checkbox,
+.main-menu-filters label.inline-checkbox {
+  display: inline-flex;     /* must be inline so it sits on same row */
+  flex-direction: row;      /* ensure children are side-by-side */
+  align-items: center;      /* vertical centering */
+  margin-bottom: -10px;      /* override default label margin */
+  gap: 6px;
+  white-space: nowrap;      /* prevent wrapping */
+}
+
+#controls .inline-checkbox input,
+.main-menu-filters .inline-checkbox input {
+  display: inline-block;
+  margin: 0;
+  vertical-align: middle;
+}
+
+#transitScorePopup {
+  position: fixed;
+  left: 50%;
+  bottom: 40px;
+  transform: translateX(-50%);
+  min-width: 220px;
+  max-width: 90vw;
+  background: #185a9d;
+  color: #fff;
+  padding: 14px 28px;
+  border-radius: 8px;
+  font-size: 1.15em;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  opacity: 0;
+  transition: opacity 0.4s;
+  z-index: 9999;
+  pointer-events: none;
+}
+#transitScorePopup.show {
+  opacity: 1;
+}
+
+@media (max-width: 900px) {
+  .main-menu-panel {
+    left: 2vw;
+    top: 8px;
+    width: 96vw;
+    padding: 10px 6px 10px 6px;
+  }
+
+  #animationCanvas.floating-canvas,
+  #statsCanvas.floating-canvas {
+    width: 98vw;
+    left: 1vw !important;
+    top: 260px; 
+    right: unset !important;
+    max-width: unset;
+  }
+
+
+  .floating-canvas {
+    width: 98vw;
+    min-width: unset;
+    left: 1vw;
+    transform: none;
+    padding: 0;
+  }
+  #ribbonPanel {
+    gap: 12px;
+    height: 48px;
+  }
+  .ribbon-icon { font-size: 1.5rem; }
+
+  .transit-score-marker {
+    background: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    pointer-events: none;
+  }
+
+}

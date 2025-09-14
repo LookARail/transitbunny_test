@@ -270,13 +270,7 @@ async function LoadGTFSZipFile(zipFileInput) {
     routes = results.routes || [];
     trips = results.trips || [];
     stopTimesByTripId = results.stopTimesByTripId || {};
-    console.log('stopTimesByTripId keys:', Object.keys(stopTimesByTripId).length);
-    // Rebuild flat stopTimes array from stopTimesByTripId
-    stopTimes = [];    
-    Object.values(stopTimesByTripId).forEach(arr => {
-      if (Array.isArray(arr)) stopTimes.push(...arr);
-    });
-    // ...
+    stopTimes = [];    //not building stopTimes here
 
     tripStartTimeMap = results.tripStartTimeMap || {};
 
@@ -909,6 +903,14 @@ function filterTrips() {
     );
     filteredTrips1 = filteredTrips;
     filteredTrips2 = [];
+  }
+
+  //clear and rebuild stopTimes for filteredTrips
+  stopTimes = [];
+  for (const trip of filteredTrips) {
+    if (stopTimesByTripId[trip.trip_id]) {
+      stopTimes.push(...stopTimesByTripId[trip.trip_id]);
+    }
   }
 }
 

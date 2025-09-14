@@ -192,8 +192,8 @@ onmessage = async function (e) {
           if (!stopTimesByTripId[tripId]) stopTimesByTripId[tripId] = [];
           stopTimesByTripId[tripId].push(stObj);
 
-          if (!tripStopsMap[tripId]) tripStopsMap[tripId] = {};
-          if (stopId) tripStopsMap[tripId][stopId] = 1;
+          if (!tripStopsMap[tripId]) tripStopsMap[tripId] = []; 
+          if (stopId) tripStopsMap[tripId].push({ stop_id: stopId, stop_sequence: seq });
 
           if (departureSec !== null) {
             const t = tripStartTimeMap[tripId];
@@ -214,7 +214,9 @@ onmessage = async function (e) {
           // convert tripStopsMap small objects to arrays for structured clone
           const tripStopsMapObj = {};
           Object.keys(tripStopsMap).forEach(k => {
-            tripStopsMapObj[k] = Object.keys(tripStopsMap[k]);
+            // Sort by stop_sequence and keep only stop_id
+            tripStopsMap[k].sort((a, b) => a.stop_sequence - b.stop_sequence);
+            tripStopsMapObj[k] = tripStopsMap[k].map(obj => obj.stop_id);
           });
 
           // We DO NOT return the full `stop_times` array to reduce memory — only the compact indexes

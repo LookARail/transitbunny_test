@@ -34,7 +34,7 @@ async function calculateTransitAccessibilityScore(lat, lon, filteredStops, filte
       distance: calculateDistance(lat, lon, stop.lat, stop.lon)
     }))
     .filter(obj => obj.distance <= searchRadiusMeters);
-  console.log(`Found ${stopsWithinRadius.length} stops within ${searchRadiusMeters} meters.`);
+  console.log(`Found ${stopsWithinRadius.length} stops out of ${filteredStops.length} within ${searchRadiusMeters} meters.`);
 
   // 2. Build shapeIdToClosestStop map
   const shapeIdToClosestStop = new Map();
@@ -237,6 +237,9 @@ function setupTransitScoreMapClickHandler() {
     const filteredStopTimes = stopTimes.filter(st => filteredTripIds.has(st.trip_id));
     const filteredStopIds = new Set(filteredStopTimes.map(st => st.stop_id));
     const filteredStops = stops.filter(s => filteredStopIds.has(s.id));
+    console.log('filteredTrips:', filteredTrips.length);
+    console.log('stopTimes:', stopTimes.length);
+    console.log('stops:', stops.length);
     // ---------------------------------------------------------------
 
     // Calculate score

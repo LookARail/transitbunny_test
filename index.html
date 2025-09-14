@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -34,26 +33,36 @@
     Trip Filters:
   </span>
   <div class="main-menu-filters">
+    
     <!-- Route Type Filter -->
-    <label>
-      <span class="tooltip">
-        Route Type:
-        <span class="tooltiptext">
-          Route Type Typically has the following nomenclature:<br>1 = Subway/Metro<br>2 = Rail<br>3 = Bus<br>4 = Ferry<br>MultiSelect is available
+    <div class="filter-row">
+      <label for="routeTypeSelect" class="filter-label">
+        <span class="tooltip">
+          Route Type:
+          <span class="tooltiptext">
+            Route Type Typically has the following nomenclature:<br>1 = Subway/Metro<br>2 = Rail<br>3 = Bus<br>4 = Ferry<br>MultiSelect is available
+          </span>
         </span>
-      </span>
-      <select id="routeTypeSelect" multiple size="4" style="min-width: 120px;"></select>
-    </label>
+      </label>
+      <button type="button" id="selectAllRouteType" class="select-all-btn">Select All</button>
+    </div>
+    <select id="routeTypeSelect" multiple size="4" style="min-width: 120px;"></select>
+
     <!-- Route Name Filter -->
-    <label>
-      <span class="tooltip">
-        Route Name:
-        <span class="tooltiptext">
-          Route Name is the name of the route, such as "Red Line" or "180".<br>MultiSelect is available
+    <div class="filter-row">
+      <label for="routeShortNameSelect" class="filter-label">
+        <span class="tooltip">
+          Route Name:
+          <span class="tooltiptext">
+            Route Name is the name of the route, such as "Red Line" or "180".<br>MultiSelect is available
+          </span>
         </span>
-      </span>
-      <select id="routeShortNameSelect" multiple size="4" style="min-width: 120px; max-width: 300px;"></select>
-    </label>
+      </label>
+      <button type="button" id="selectAllRouteName" class="select-all-btn">Select All</button>
+    </div>
+    <select id="routeShortNameSelect" multiple size="4" style="min-width: 120px; max-width: 300px;"></select>
+
+
     <!-- Service Pattern ID Filter -->
     <label id="serviceIdLabel">
       <span class="tooltip">
@@ -247,4 +256,3 @@
   <script src="libs/leaflet.markercluster.js"></script>  
 </body>
 </html>
-

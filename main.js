@@ -1418,6 +1418,7 @@ window.addEventListener('DOMContentLoaded', () => {
       if (isActive) {
         this.classList.remove('active');
         if (canvas) canvas.style.display = 'none';
+        this.blur(); 
       } else {
         this.classList.add('active');
         if (canvas) canvas.style.display = 'flex';
@@ -1441,6 +1442,22 @@ window.addEventListener('DOMContentLoaded', () => {
       });
     });
   });
+
+  document.getElementById('selectAllRouteType').onclick = function() {
+    const sel = document.getElementById('routeTypeSelect');
+    for (let i = 0; i < sel.options.length; i++) {
+      sel.options[i].selected = true;
+    }
+    sel.dispatchEvent(new Event('change'));
+  };
+
+  document.getElementById('selectAllRouteName').onclick = function() {
+    const sel = document.getElementById('routeShortNameSelect');
+    for (let i = 0; i < sel.options.length; i++) {
+      sel.options[i].selected = true;
+    }
+    sel.dispatchEvent(new Event('change'));
+  };
 
   // Handle all close-canvas buttons
   document.querySelectorAll('.close-canvas-btn').forEach(btn => {

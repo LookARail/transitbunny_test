@@ -36,6 +36,8 @@ let serviceDateFilterMode = false; // true if using service-date filter
 let tripStartTimeMap = {};   // 
 let tripStopsMap     = {};   // 
 let blockIdTripMap = {};
+let stopTimesText = '';
+let stopTimesTripIndex = {};
 
 // === Short‑name lookup by route_type ===
 let shortAndLongNamesByType = {}; // 
@@ -49,7 +51,6 @@ let speedMultiplier = 10;
 let stopsById = new Map();           // stop_id -> {id,name,lat,lon}
 let shapesById = {};                 // shape_id -> [ {lat,lon,sequence,shape_dist_traveled}, ... ]
 let shapeCumulativeDist = {};        // shape_id -> [cumulative distances]
-let stopTimesByTripId = {};          // trip_id -> [ {trip_id,stop_id,arrival_time,departure_time,stop_sequence,departure_sec}, ... ]
 
 let lastDraggedDepth = 0; // for handling drag events on markers
 
@@ -268,11 +269,13 @@ async function LoadGTFSZipFile(zipFileInput) {
     shapesById = results.shapesById || {};
     shapeIdToDistance = results.shapeIdToDistance || {};
     routes = results.routes || [];
-    trips = results.trips || [];
-    stopTimesByTripId = results.stopTimesByTripId || {};
+    trips = results.trips || [];    
     stopTimes = [];    //not building stopTimes here
-
+    stopTimesText = results.stop_times_text || '';
+    stopTimesTripIndex = results.stop_times_trip_index || {};
     tripStartTimeMap = results.tripStartTimeMap || {};
+
+    console.log(`stopTimesTripIndex: ${Object.keys(stopTimesTripIndex).length}`);
 
     if (results.tripStopsMap) {
       tripStopsMap = results.tripStopsMap; // Now an array of stop_ids in correct order
@@ -298,21 +301,37 @@ async function LoadGTFSZipFile(zipFileInput) {
   }
 }
 
-
-
-let shapeIdToDistance = {};
-function buildShapeIdToDistance() {
-  shapeIdToDistance = {};
-  // Group shape points by shape_id
-  const shapesById = {};
-  shapes.forEach(s => {
-    if (!shapesById[s.shape_id]) shapesById[s.shape_id] = [];
-    shapesById[s.shape_id].push(s);
-  });
-  Object.entries(shapesById).forEach(([shape_id, pts]) => {
-    shapeIdToDistance[shape_id] = shapeDistance(pts);
-  });
+function buildFilteredStopTimes(tripIds, stopTimesText, tripLineIndex) {
+  if (!stopTimesText || !tripLineIndex) return [];
+  const lines = stopTimesText.split(/\r?\n/);
+  const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+  const idx = {
+    trip_id: headers.indexOf('trip_id'),
+    arrival_time: headers.indexOf('arrival_time'),
+    departure_time: headers.indexOf('departure_time'),
+    stop_id: headers.indexOf('stop_id'),
+    stop_sequence: headers.indexOf('stop_sequence')
+  };
+  const stopTimes = [];
+  for (const tripId of tripIds) {
+    const range = tripLineIndex[tripId];
+    if (!range) continue;
+    for (let i = range.start; i <= range.end; i++) {
+      const row = lines[i];
+      if (!row) continue;
+      const cols = row.split(',');
+      stopTimes.push({
+        trip_id: cols[idx.trip_id] ? cols[idx.trip_id].trim() : '',
+        arrival_time: cols[idx.arrival_time] ? cols[idx.arrival_time].trim() : '',
+        departure_time: cols[idx.departure_time] ? cols[idx.departure_time].trim() : '',
+        stop_id: cols[idx.stop_id] ? cols[idx.stop_id].trim() : '',
+        stop_sequence: parseInt(cols[idx.stop_sequence], 10) || 0
+      });
+    }
+  }
+  return stopTimes;
 }
+
 
 function clearAllMapLayersAndMarkers() {
   // Remove stops layer if present
@@ -352,6 +371,7 @@ function clearAllMapLayersAndMarkers() {
   // Clear precomputed maps
   tripStartTimeMap = {};
   tripStopsMap = {};
+  stopTimesTripIndex = {};
   // Clear short-name lookup
   shortAndLongNamesByType = {};
   shortNameToServiceIds = {};
@@ -361,266 +381,6 @@ function clearAllMapLayersAndMarkers() {
   currentTrip = null;
 }
 
-
-//#region ParseData
-function parseStopsIntoMap(text) {
-  const lines = text.trim().split(/\r?\n/);
-  if (!lines.length) return [];
-  const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-  const idIndex = headers.indexOf('stop_id');
-  const nameIndex = headers.indexOf('stop_name');
-  const latIndex = headers.indexOf('stop_lat');
-  const lonIndex = headers.indexOf('stop_lon');
-
-  if (latIndex === -1 || lonIndex === -1) {
-    throw new Error('Missing stop_lat or stop_lon columns in stops.txt');
-  }
-
-  stops = [];
-  stopsById = new Map();
-
-  for (let i = 1; i < lines.length; i++) {
-    const row = lines[i];
-    if (!row) continue;
-    const cols = row.split(','); // still naive but same interface as before
-    const obj = {
-      id: cols[idIndex] ? cols[idIndex].trim() : '',
-      name: cols[nameIndex] ? cols[nameIndex].trim() : '',
-      lat: parseFloat(cols[latIndex]),
-      lon: parseFloat(cols[lonIndex])
-    };
-    stops.push(obj);
-    if (obj.id) stopsById.set(obj.id, obj);
-  }
-
-  return stops;
-}
-
-
-function parseShapesIntoGroups(text) {
-  const lines = text.trim().split(/\r?\n/);
-  if (!lines.length) return [];
-  const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-  const shapeIDIndex = headers.indexOf('shape_id');
-  const shapeLatIndex = headers.indexOf('shape_pt_lat');
-  const shapeLonIndex = headers.indexOf('shape_pt_lon');
-  const shapeSeqIndex = headers.indexOf('shape_pt_sequence');
-  const shapeDistIndex = headers.indexOf('shape_dist_traveled');
-
-  if (shapeIDIndex === -1 || shapeLatIndex === -1 || shapeLonIndex === -1 || shapeSeqIndex === -1) {
-    throw new Error('Missing required columns in shapes.txt');
-  }
-
-  // We'll also maintain the original `shapes` flat array for compatibility
-  shapes = [];
-  shapesById = {};
-
-  for (let i = 1; i < lines.length; i++) {
-    const row = lines[i];
-    if (!row) continue;
-    const cols = row.split(',');
-    const sid = cols[shapeIDIndex] ? cols[shapeIDIndex].trim() : '';
-    const lat = parseFloat(cols[shapeLatIndex]);
-    const lon = parseFloat(cols[shapeLonIndex]);
-    const seq = parseInt(cols[shapeSeqIndex], 10);
-    const dist = shapeDistIndex !== -1 ? parseFloat(cols[shapeDistIndex]) : undefined;
-
-    const obj = { shape_id: sid, lat, lon, sequence: seq, shape_dist_traveled: dist };
-    shapes.push(obj);
-    if (!shapesById[sid]) shapesById[sid] = [];
-    shapesById[sid].push(obj);
-  }
-
-  // Sort each shape's points by sequence and compute cumulative distances (single pass per shape)
-  shapeCumulativeDist = {};
-  shapeIdToDistance = {}; // keep alias used elsewhere
-  Object.keys(shapesById).forEach(id => {
-    const pts = shapesById[id];
-    pts.sort((a,b) => a.sequence - b.sequence);
-    // compute cumulative distances
-    const cum = [0];
-    for (let k = 1; k < pts.length; k++) {
-      const d = calculateDistance(pts[k-1].lat, pts[k-1].lon, pts[k].lat, pts[k].lon);
-      cum.push(cum[cum.length - 1] + d);
-    }
-    shapeCumulativeDist[id] = cum;
-    shapeIdToDistance[id] = cum.length ? cum[cum.length - 1] : 0;
-  });
-
-  return shapes;
-}
-
-
-function parseRoutes(text) {
-  const lines = text.trim().split('\n');
-  const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-
-  const routeIdIndex = headers.indexOf('route_id');
-  const shortNameIndex = headers.indexOf('route_short_name');
-  const longNameIndex = headers.indexOf('route_long_name');
-  const typeIndex = headers.indexOf('route_type');
-
-  if (routeIdIndex === -1 || typeIndex === -1) {
-    throw new Error('Missing required columns in routes.txt');
-  }
-
-  return lines.slice(1).map(row => {
-    const cols = row.split(',').map(col => col.trim());
-    return {
-      route_id: cols[routeIdIndex],
-      route_short_name: cols[shortNameIndex] || '',
-      route_long_name: cols[longNameIndex] || '',
-      route_type: cols[typeIndex]
-    };
-  });
-}
-
-
-function parseTrips(text) {
-  const lines = text.trim().split('\n');
-  const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-
-  const routeIdIndex = headers.indexOf('route_id');
-  const serviceIdIndex = headers.indexOf('service_id');
-  const tripIdIndex = headers.indexOf('trip_id');
-  const shapeIdIndex = headers.indexOf('shape_id');
-  const blockIDIndex = headers.indexOf('block_id');
-  const directionIdIndex = headers.indexOf('direction_id');
-  
-  if (routeIdIndex === -1 || serviceIdIndex === -1 || tripIdIndex === -1) {
-    throw new Error('Missing required columns in trips.txt');
-  }
-  if (blockIDIndex === -1) {
-    console.warn('block_id column not found in trips.txt. Vehicle animation will not connect trips by block.');
-  }
-  if (directionIdIndex === -1) {
-    console.warn('direction_id column not found in trips.txt. Trips-per-hour graph will not be split by direction.');
-  }
-
-
-  return lines.slice(1).map(row => {
-    const cols = row.split(',').map(col => col.trim());
-    return {
-      route_id: cols[routeIdIndex],
-      service_id: cols[serviceIdIndex],
-      trip_id: cols[tripIdIndex],
-      shape_id: shapeIdIndex !== -1 ? cols[shapeIdIndex] : undefined,
-      block_id: blockIDIndex !== -1 ? cols[blockIDIndex] : undefined,
-      direction_id: directionIdIndex !== -1 ? cols[directionIdIndex] : undefined
-    };
-  });
-}
-
-function parseStopTimesIntoIndexes(text) {
-  const lines = text.trim().split(/\r?\n/);
-  if (!lines.length) return [];
-  const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-  const idx = {
-    trip_id: headers.indexOf('trip_id'),
-    arrival_time: headers.indexOf('arrival_time'),
-    departure_time: headers.indexOf('departure_time'),
-    stop_id: headers.indexOf('stop_id'),
-    stop_sequence: headers.indexOf('stop_sequence')
-  };
-
-  if (idx.trip_id === -1 || idx.stop_id === -1 || idx.stop_sequence === -1) {
-    throw new Error('Missing required columns in stop_times.txt');
-  }
-
-  stopTimes = []; // keep flat array for compatibility
-  stopTimesByTripId = {};
-  tripStartTimeMap = {}; // clear and build here
-  tripStopsMap = {};     // clear and build here
-
-  for (let i = 1; i < lines.length; i++) {
-    const row = lines[i];
-    if (!row) continue;
-    const cols = row.split(',');
-    const tripId = cols[idx.trip_id] ? cols[idx.trip_id].trim() : '';
-    const stopId = cols[idx.stop_id] ? cols[idx.stop_id].trim() : '';
-    const seq = parseInt(cols[idx.stop_sequence], 10) || 0;
-    const arrival = cols[idx.arrival_time] ? cols[idx.arrival_time].trim() : '';
-    const departure = cols[idx.departure_time] ? cols[idx.departure_time].trim() : (arrival || '');
-    const departureSec = departure ? timeToSeconds(departure) : null;
-
-    const stObj = {
-      trip_id: tripId,
-      arrival_time: arrival,
-      departure_time: departure,
-      stop_id: stopId,
-      stop_sequence: seq,
-      departure_sec: departureSec
-    };
-    stopTimes.push(stObj);
-
-    if (!stopTimesByTripId[tripId]) stopTimesByTripId[tripId] = [];
-    stopTimesByTripId[tripId].push(stObj);
-
-    if (!tripStopsMap[tripId]) tripStopsMap[tripId] = [];
-    if (stopId) tripStopsMap[tripId].push({ stop_id: stopId, stop_sequence: seq });
-
-    if (departureSec !== null) {
-      const t = tripStartTimeMap[tripId];
-      if (t === undefined || departureSec < t) tripStartTimeMap[tripId] = departureSec;
-    }
-  }
-  // sort each trip's stop_times by stop_sequence
-  Object.keys(stopTimesByTripId).forEach(tid => {
-    stopTimesByTripId[tid].sort((a,b) => a.stop_sequence - b.stop_sequence);
-  });
-
-  Object.keys(tripStopsMap).forEach(tripId => {
-    tripStopsMap[tripId].sort((a, b) => a.stop_sequence - b.stop_sequence);
-    tripStopsMap[tripId] = tripStopsMap[tripId].map(obj => obj.stop_id);
-  });
-
-  return stopTimes;
-}
-
-// --- Calendar Parsing ---
-function parseCalendar(text) {
-  const lines = text.trim().split(/\r?\n/);
-  const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-  const idx = {};
-  ['service_id','monday','tuesday','wednesday','thursday','friday','saturday','sunday','start_date','end_date'].forEach(k => {
-    idx[k] = headers.indexOf(k);
-  });
-  return lines.slice(1).map(row => {
-    const cols = row.split(',').map(col => col.trim());
-    return {
-      service_id: cols[idx['service_id']],
-      days: {
-        monday: +cols[idx['monday']],
-        tuesday: +cols[idx['tuesday']],
-        wednesday: +cols[idx['wednesday']],
-        thursday: +cols[idx['thursday']],
-        friday: +cols[idx['friday']],
-        saturday: +cols[idx['saturday']],
-        sunday: +cols[idx['sunday']]
-      },
-      start_date: cols[idx['start_date']],
-      end_date: cols[idx['end_date']]
-    };
-  });
-}
-
-function parseCalendarDates(text) {
-  const lines = text.trim().split(/\r?\n/);
-  const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-  const idx = {
-    service_id: headers.indexOf('service_id'),
-    date: headers.indexOf('date'),
-    exception_type: headers.indexOf('exception_type')
-  };
-  return lines.slice(1).map(row => {
-    const cols = row.split(',').map(col => col.trim());
-    return {
-      service_id: cols[idx.service_id],
-      date: cols[idx.date],
-      exception_type: +cols[idx.exception_type] // 1=add, 2=remove
-    };
-  });
-}
 
 
 // --- Build Service-Date Dictionary ---
@@ -907,11 +667,8 @@ function filterTrips() {
 
   //clear and rebuild stopTimes for filteredTrips
   stopTimes = [];
-  for (const trip of filteredTrips) {
-    if (stopTimesByTripId[trip.trip_id]) {
-      stopTimes.push(...stopTimesByTripId[trip.trip_id]);
-    }
-  }
+  stopTimes = buildFilteredStopTimes(filteredTrips.map(t => t.trip_id), stopTimesText, stopTimesTripIndex);
+  console.log(`Filtered trips: ${filteredTrips.length}, stopTimesTextSize: ${stopTimesText.length}, stopTimesTripIndexSize: ${Object.keys(stopTimesTripIndex).length}, Filtered stopTimes: ${stopTimes.length}`);
 }
 
 // Skip markercluster plugin overhead entirely below this count

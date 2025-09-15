@@ -275,8 +275,6 @@ async function LoadGTFSZipFile(zipFileInput) {
     stopTimesTripIndex = results.stop_times_trip_index || {};
     tripStartTimeMap = results.tripStartTimeMap || {};
 
-    console.log(`stopTimesTripIndex: ${Object.keys(stopTimesTripIndex).length}`);
-
     if (results.tripStopsMap) {
       tripStopsMap = results.tripStopsMap; // Now an array of stop_ids in correct order
     } else {

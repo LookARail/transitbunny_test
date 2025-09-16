@@ -1,5 +1,7 @@
 // Updated JavaScript: GTFS Animation with Accurate Interpolation Based on Stop Times
 
+let gtfsWorker = null;
+
 // === Global GTFS data ===
 let stops = [];
 let shapes = [];
@@ -79,7 +81,7 @@ async function loadGtfsFromWebZip() {
     const res = await fetch(url);
     const buffer = await res.arrayBuffer();
     const zip = fflate.unzipSync(new Uint8Array(buffer));
-    LoadGTFSZipFile(zip);
+    await LoadGTFSZipFile(zip);
   } catch (err) {
     console.error('Failed to load GTFS ZIP:', err);
   }
@@ -90,12 +92,11 @@ async function loadGtfsFromWebZip() {
 async function loadGtfsFromUserUploadZip(file) {
 
   const reader = new FileReader();
-  reader.onload = function(e) {
+  reader.onload = async function(e) {
     try {
       const buffer = e.target.result;
-      const zip = fflate.unzipSync(new Uint8Array(buffer));
-
-      LoadGTFSZipFile(zip);     
+      const zip = fflate.unzipSync(new Uint8Array(buffer));   
+      await LoadGTFSZipFile(zip); 
     } catch (err) {     
       alert('Failed to load GTFS ZIP: ' + err.message);
     }
@@ -111,10 +112,7 @@ async function LoadGTFSZipFile(zipFileInput) {
 
     clearAllMapLayersAndMarkers();
 
-    // We support three types of input:
-    // 1) File object (from input) -> read as ArrayBuffer (preferred)
-    // 2) ArrayBuffer or Uint8Array (raw zip bytes) -> preferred
-    // 3) Existing unzipped object { 'stops.txt': Uint8Array, ... } -> fallback (less efficient)
+
     let rawZipBuffer = null;
     let fallbackZipObj = null;
 
@@ -152,24 +150,26 @@ async function LoadGTFSZipFile(zipFileInput) {
       }
     }
 
-    // prepare variables for weighted progress (we'll fill weights after worker posts file sizes)
+    // prepare variables for weighted progress 
     const fileProgress = {};
     const weights = {};
     let lastOverall = 0;
     let worker = null;
 
     const results = await new Promise((resolve, reject) => {
-      worker = new Worker('gtfsWorker.js');
+      if (gtfsWorker) {
+        gtfsWorker.terminate();
+      }
+      gtfsWorker = new Worker('gtfsWorker.js');
+      worker = gtfsWorker;
 
       // When worker posts file sizes, we initialize weights and progress map
       worker.onmessage = (ev) => {
         const msg = ev.data;
         if (!msg) return;
 
-        if (msg.type === 'files') {
-          // msg.files: { 'stops.txt': length, ... }
-          const filesObj = msg.files || {};
-          // compute weights by byte length
+        if (msg.type === 'files') {          
+          const filesObj = msg.files || {};          
           let total = 0;
           Object.keys(filesObj).forEach(f => { total += filesObj[f] || 0; });
           if (total > 0) {
@@ -178,23 +178,18 @@ async function LoadGTFSZipFile(zipFileInput) {
               fileProgress[f] = 0;
             });
           } else {
-            // fallback equal weights
             const keys = Object.keys(filesObj);
             const w = keys.length ? 1 / keys.length : 0;
             keys.forEach(f => { weights[f] = w; fileProgress[f] = 0; });
           }
-          // small visual bump after init
           setProgressBar(8);
-        } else if (msg.type === 'status') {
-          // show small visual bump on status messages
+        } else if (msg.type === 'status') {        
           setProgressBar(Math.max(lastOverall, 8));
           console.log('[Worker status]', msg.message);
         } else if (msg.type === 'progress') {
-          // update per-file progress
           if (msg.file && weights[msg.file] !== undefined) {
             fileProgress[msg.file] = Math.max(0, Math.min(1, msg.progress || 0));
-          } else if (msg.file) {
-            // unknown file - add minimal weight (optional)
+          } else if (msg.file) {            
             if (fileProgress[msg.file] === undefined) { fileProgress[msg.file] = Math.max(0, Math.min(1, msg.progress || 0)); weights[msg.file] = 0.0001; }
             else fileProgress[msg.file] = Math.max(fileProgress[msg.file], Math.max(0, Math.min(1, msg.progress || 0)));
           }
@@ -226,14 +221,44 @@ async function LoadGTFSZipFile(zipFileInput) {
         reject(errEv.error || new Error('Worker runtime error'));
       };
 
-      // Send data to worker.
-      // Preferred: transfer rawZipBuffer (zero-copy)
+      // Install small per-worker dispatcher for requestId-based replies (filteredStopTimes)
+          if (!worker._requestDispatcherInstalled) {
+            worker._requestDispatcherInstalled = true;
+            worker._nextWorkerReqId = 1;
+            worker._pendingRequests = new Map();
+            worker.addEventListener('message', (ev) => {
+              const msg = ev.data;
+              if (!msg) return;
+              const rid = msg.requestId || null;
+              if (!rid) return; // ignore messages without requestId
+              const ctx = worker._pendingRequests.get(rid);
+              if (!ctx) return;
+              clearTimeout(ctx.timer);
+              worker._pendingRequests.delete(rid);
+              if (msg.type === 'filteredStopTimes') ctx.resolve(msg.stopTimes);
+              else if (msg.type === 'error') ctx.reject(new Error(msg.message || 'Worker error'));
+              else ctx.reject(new Error('Unexpected worker reply'));
+            });
+          }
+
+
+      // Send pre-unzipped mapping to worker (zipFile: filename -> Uint8Array)
       if (rawZipBuffer) {
-        // ensure we have an ArrayBuffer to transfer
-        const ab = (rawZipBuffer instanceof ArrayBuffer) ? rawZipBuffer : rawZipBuffer.buffer || rawZipBuffer;
-        worker.postMessage({ rawZip: ab }, [ab]);
+        try {
+          const uint8 = (rawZipBuffer instanceof Uint8Array) ? rawZipBuffer : new Uint8Array(rawZipBuffer);
+          const zipObj = fflate.unzipSync(uint8); // mapping filename -> Uint8Array
+          const cloneable = {};
+          const transfer = [];
+          Object.keys(zipObj).forEach(k => {
+            const v = zipObj[k];
+            cloneable[k] = v;
+            if (v && v.buffer) transfer.push(v.buffer);
+          });
+          worker.postMessage({ zipFile: cloneable }, transfer);
+        } catch (err) {
+          reject(new Error('Failed to unzip on main thread: ' + (err && err.message)));
+        }
       } else if (fallbackZipObj) {
-        // fallback: send pre-unzipped files as before; transfer each buffer to avoid copying when possible
         const transfer = [];
         const cloneable = {};
         Object.keys(fallbackZipObj).forEach(k => {
@@ -247,12 +272,6 @@ async function LoadGTFSZipFile(zipFileInput) {
         reject(new Error('No zip data to send to worker'));
       }
     });
-
-    // worker done; terminate
-    if (worker) {
-      try { worker.terminate(); } catch (e) {}
-      worker = null;
-    }
 
     // UI bump to show near-complete parsing
     setProgressBar(95);
@@ -270,8 +289,6 @@ async function LoadGTFSZipFile(zipFileInput) {
     shapeIdToDistance = results.shapeIdToDistance || {};
     routes = results.routes || [];
     trips = results.trips || [];    
-    stopTimes = [];    //not building stopTimes here
-    stopTimesText = results.stop_times_text || '';
     stopTimesTripIndex = results.stop_times_trip_index || {};
     tripStartTimeMap = results.tripStartTimeMap || {};
 
@@ -299,36 +316,29 @@ async function LoadGTFSZipFile(zipFileInput) {
   }
 }
 
-function buildFilteredStopTimes(tripIds, stopTimesText, tripLineIndex) {
-  if (!stopTimesText || !tripLineIndex) return [];
-  const lines = stopTimesText.split(/\r?\n/);
-  const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-  const idx = {
-    trip_id: headers.indexOf('trip_id'),
-    arrival_time: headers.indexOf('arrival_time'),
-    departure_time: headers.indexOf('departure_time'),
-    stop_id: headers.indexOf('stop_id'),
-    stop_sequence: headers.indexOf('stop_sequence')
-  };
-  const stopTimes = [];
-  for (const tripId of tripIds) {
-    const range = tripLineIndex[tripId];
-    if (!range) continue;
-    for (let i = range.start; i <= range.end; i++) {
-      const row = lines[i];
-      if (!row) continue;
-      const cols = row.split(',');
-      stopTimes.push({
-        trip_id: cols[idx.trip_id] ? cols[idx.trip_id].trim() : '',
-        arrival_time: cols[idx.arrival_time] ? cols[idx.arrival_time].trim() : '',
-        departure_time: cols[idx.departure_time] ? cols[idx.departure_time].trim() : '',
-        stop_id: cols[idx.stop_id] ? cols[idx.stop_id].trim() : '',
-        stop_sequence: parseInt(cols[idx.stop_sequence], 10) || 0
-      });
+// main.js — one outstanding request at a time, safe cleanup + timeout
+function requestFilteredStopTimesFromWorker(tripIds, timeoutMs = 30000) {
+  return new Promise((resolve, reject) => {
+    if (!gtfsWorker) return reject(new Error('No GTFS worker available'));
+    const workerInst = gtfsWorker;
+    if (!workerInst._requestDispatcherInstalled) {
+      return reject(new Error('Worker request dispatcher not installed'));
     }
-  }
-  return stopTimes;
+    const reqId = String(workerInst._nextWorkerReqId++);
+    const timer = setTimeout(() => {
+      workerInst._pendingRequests.delete(reqId);
+      reject(new Error('Timeout waiting for filteredStopTimes'));
+    }, timeoutMs);
+    workerInst._pendingRequests.set(reqId, { resolve, reject, timer });
+
+    workerInst.postMessage({
+      type: 'extractStopTimesForTrips',
+      requestId: reqId,
+      tripIds: tripIds
+    });
+  });
 }
+
 
 
 function clearAllMapLayersAndMarkers() {
@@ -605,7 +615,7 @@ function populateFilters() {
 let filteredTrips1 = [];
 let filteredTrips2 = [];
 
-function filterTrips() {
+async function filterTrips() {
   const types = Array.from(document.getElementById('routeTypeSelect').selectedOptions).map(o => o.value);
   const names = Array.from(document.getElementById('routeShortNameSelect').selectedOptions).map(o => o.value);
   
@@ -663,10 +673,12 @@ function filterTrips() {
     filteredTrips2 = [];
   }
 
-  //clear and rebuild stopTimes for filteredTrips
-  stopTimes = [];
-  stopTimes = buildFilteredStopTimes(filteredTrips.map(t => t.trip_id), stopTimesText, stopTimesTripIndex);
-  console.log(`Filtered trips: ${filteredTrips.length}, stopTimesTextSize: ${stopTimesText.length}, stopTimesTripIndexSize: ${Object.keys(stopTimesTripIndex).length}, Filtered stopTimes: ${stopTimes.length}`);
+  //clear and rebuild stopTimes for filteredTrips, if there there is >0 filteredTrips
+  if (filteredTrips.length > 0) {
+    stopTimes = [];
+    stopTimes = await requestFilteredStopTimesFromWorker(filteredTrips.map(t => t.trip_id));
+    console.log(`Filtered trips: ${filteredTrips.length}, stopTimesTripIndexSize: ${Object.keys(stopTimesTripIndex).length}, Filtered stopTimes: ${stopTimes.length}`);    
+  }
 }
 
 // Skip markercluster plugin overhead entirely below this count

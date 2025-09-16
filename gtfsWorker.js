@@ -149,7 +149,10 @@ async function getStopTimesForTripsFromIDB(db, tripIds) {
       const tid = tripIds[idx];
       try {
         const rec = await idbGet(db, 'stop_times_by_trip', tid);
-        results[tid] = rec && rec.stop_times ? rec.stop_times : [];
+        // Add trip_id back to each stop_time object
+        results[tid] = rec && rec.stop_times
+          ? rec.stop_times.map(st => ({ ...st, trip_id: tid }))
+          : [];
       } catch (err) {
         results[tid] = []; // on error return empty
       }
@@ -238,13 +241,13 @@ onmessage = async function (e) {
       stops: null, routes: null, trips: null, shapes: null,
       calendar: null, calendar_dates: null,
       stopsById: null, shapesById: null, shapeIdToDistance: null,
-      stop_times_trip_index: null, tripStartTimeMap: null, tripStopsMap: null
+      stop_times_trip_index: null, tripStartTimeMap: null, tripFirstStopsMap: null
     };
 
     // --- stops ---
     if (zipFile['stops.txt']) {
       postMessage({ type: 'status', message: 'Worker: parsing stops.txt (Blob)' });
-      const stops = await parseBlobToObjects(zipFile['stops.txt'], 'stops.txt');
+      let stops = await parseBlobToObjects(zipFile['stops.txt'], 'stops.txt');
       const stopsById = {};
       for (const obj of stops) {
         const id = obj.stop_id ? obj.stop_id.trim() : '';
@@ -256,26 +259,33 @@ onmessage = async function (e) {
       }
       results.stops = stops;
       results.stopsById = stopsById;
+
+      stops = null; // free memory
     }
+
 
     // --- routes ---
     if (zipFile['routes.txt']) {
       postMessage({ type: 'status', message: 'Worker: parsing routes.txt (Blob)' });
-      const routes = await parseBlobToObjects(zipFile['routes.txt'], 'routes.txt');
+      let routes = await parseBlobToObjects(zipFile['routes.txt'], 'routes.txt');
       results.routes = routes;
+
+      routes = null; // free memory
     }
 
     // --- trips ---
     if (zipFile['trips.txt']) {
       postMessage({ type: 'status', message: 'Worker: parsing trips.txt (Blob)' });
-      const trips = await parseBlobToObjects(zipFile['trips.txt'], 'trips.txt');
+      let trips = await parseBlobToObjects(zipFile['trips.txt'], 'trips.txt');
       results.trips = trips;
+
+      trips = null; // free memory
     }
 
     // --- shapes ---
     if (zipFile['shapes.txt']) {
       postMessage({ type: 'status', message: 'Worker: parsing shapes.txt (Blob)' });
-      const shapes = await parseBlobToObjects(zipFile['shapes.txt'], 'shapes.txt');
+      let shapes = await parseBlobToObjects(zipFile['shapes.txt'], 'shapes.txt');
       const shapesById = {};
       for (const obj of shapes) {
         const sid = obj.shape_id ? obj.shape_id.trim() : '';
@@ -306,9 +316,12 @@ onmessage = async function (e) {
       results.shapes = shapes;
       results.shapesById = shapesById;
       results.shapeIdToDistance = shapeIdToDistance;
+
+      shapes = null; // free memory      
     }
 
     // --- stop_times: stream-parse and write per-trip to IndexedDB (also build small indices) ---
+
     if (zipFile['stop_times.txt']) {
       postMessage({ type: 'status', message: 'Worker: ingesting stop_times.txt to IndexedDB (streaming)' });
 
@@ -320,11 +333,17 @@ onmessage = async function (e) {
       let lastTripId = null;
       const tripLineIndex = {};
       const tripStartTimeMap = {};
-      const tripStops = {}; // temporary object to collect stop_ids (will be reduced to arrays)
+      let tripStops = {}; // temporary object to collect stop_ids (will be reduced to arrays)
 
       // For per-trip accumulation while reading sequentially
       let currTrip = null;
       let currBuffer = [];
+
+      const totalBytes = zipFile['stop_times.txt'].byteLength;
+      let bytesRead = 0;
+      let avgBytesPerLine = null;
+      let sampleLineBytes = 0;
+      let sampleLineCount = 0;
 
       await new Promise((resolve, reject) => {
         Papa.parse(stBlob, {
@@ -332,13 +351,33 @@ onmessage = async function (e) {
           skipEmptyLines: true,
           step: function(resultsStep) {
             lineNum++;
+
+             // Estimate bytes per line using the first 100 lines
+            if (sampleLineCount < 100) {
+              // Estimate using the length of the CSV row string
+              sampleLineBytes += resultsStep.data.arrival_time.length +
+                                resultsStep.data.departure_time.length +
+                                resultsStep.data.stop_id.length +
+                                resultsStep.data.stop_sequence.toString().length +
+                                resultsStep.data.trip_id.length;
+              sampleLineCount++;
+              if (sampleLineCount === 100) {
+                avgBytesPerLine = sampleLineBytes / 100;
+              }
+            }
+            // After 100 lines, use the estimate
+            if (avgBytesPerLine && lineNum % 10000 === 0) {
+              const estimatedTotalLines = Math.round(totalBytes / avgBytesPerLine);
+              const pct = 10 + Math.round(80 * (lineNum / estimatedTotalLines));
+              postMessage({ type: 'progress', file: 'stop_times.txt', progress: pct / 100 });
+            }
+
             const row = resultsStep.data;
             const tripId = row.trip_id ? row.trip_id.trim() : '';
             const stopId = row.stop_id ? row.stop_id.trim() : '';
             const stopSeq = row.stop_sequence ? parseInt(row.stop_sequence, 10) : 0;
             const depTimeStr = row.departure_time ? row.departure_time.trim() : '';
-            const depTimeSec = depTimeStr ? timeToSeconds(depTimeStr) : null;
-
+            
             // build small in-memory index (tripLineIndex)
             if (tripId !== lastTripId) {
               if (lastTripId !== null) {
@@ -349,14 +388,17 @@ onmessage = async function (e) {
             } else {
               tripLineIndex[tripId].end = lineNum;
             }
-
+            
             // tripStops map
             if (!tripStops[tripId]) tripStops[tripId] = [];
             if (stopId) tripStops[tripId].push({ stop_id: stopId, stop_sequence: stopSeq });
-
+            
             // tripStartTimeMap
-            if (depTimeSec != null && (!tripStartTimeMap[tripId] || stopSeq === 1 || depTimeSec < tripStartTimeMap[tripId])) {
-              tripStartTimeMap[tripId] = depTimeSec;
+            if(stopSeq ===1){
+              const depTimeSec = depTimeStr ? timeToSeconds(depTimeStr) : null;
+              if (depTimeSec != null && (!tripStartTimeMap[tripId] || depTimeSec < tripStartTimeMap[tripId])) {
+                tripStartTimeMap[tripId] = depTimeSec;
+              }
             }
 
             // accumulation for IDB storing by trip
@@ -371,8 +413,7 @@ onmessage = async function (e) {
               currBuffer = [];
             }
             // add current row to buffer (small object)
-            currBuffer.push({
-              trip_id: tripId,
+            currBuffer.push({              
               arrival_time: row.arrival_time ? row.arrival_time.trim() : '',
               departure_time: row.departure_time ? row.departure_time.trim() : '',
               stop_id: stopId,
@@ -385,24 +426,24 @@ onmessage = async function (e) {
             if (currTrip && currBuffer.length) {
               queueTripWrite(db, currTrip, currBuffer.splice(0, currBuffer.length));
             }
-            if (lastTripId !== null) {
-              tripLineIndex[lastTripId].end = lineNum;
-            }
 
             // convert tripStops to arrays of stop_ids sorted by stop_sequence
             const tripStopsMapObj = {};
             Object.keys(tripStops).forEach(tripId => {
+              // Sort stops by stop_sequence
               tripStops[tripId].sort((a,b) => a.stop_sequence - b.stop_sequence);
-              tripStopsMapObj[tripId] = tripStops[tripId].map(x => x.stop_id);
+              // Store only the first stop_id
+              tripStopsMapObj[tripId] = tripStops[tripId][0]?.stop_id || null;
             });
 
             // set results indices
-            results.stop_times_trip_index = tripLineIndex;
             results.tripStartTimeMap = tripStartTimeMap;
-            results.tripStopsMap = tripStopsMapObj;
+            results.tripFirstStopsMap = tripStopsMapObj;
+
+            tripStops = null; // free memory
 
             postMessage({ type: 'status', message: 'Worker: finished ingesting stop_times to IndexedDB' });
-
+            postMessage({ type: 'progress', file: 'stop_times.txt', progress: 0.9 });
             // wait for queued writes to finish
             flushTripBatch();
             waitForQueuedWrites().then(resolve).catch(reject);

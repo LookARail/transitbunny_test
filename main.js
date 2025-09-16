@@ -36,10 +36,9 @@ let serviceDateFilterMode = false; // true if using service-date filter
 
 // === Precomputed maps ===
 let tripStartTimeMap = {};   // 
-let tripStopsMap     = {};   // 
+let tripFirstStopsMap     = {};   // 
 let blockIdTripMap = {};
 let stopTimesText = '';
-let stopTimesTripIndex = {};
 
 // === Short‑name lookup by route_type ===
 let shortAndLongNamesByType = {}; // 
@@ -289,13 +288,13 @@ async function LoadGTFSZipFile(zipFileInput) {
     shapeIdToDistance = results.shapeIdToDistance || {};
     routes = results.routes || [];
     trips = results.trips || [];    
-    stopTimesTripIndex = results.stop_times_trip_index || {};
+    
     tripStartTimeMap = results.tripStartTimeMap || {};
 
-    if (results.tripStopsMap) {
-      tripStopsMap = results.tripStopsMap; // Now an array of stop_ids in correct order
+    if (results.tripFirstStopsMap) {
+      tripFirstStopsMap = results.tripFirstStopsMap; // Now an array of stop_ids in correct order
     } else {
-      tripStopsMap = {};
+      tripFirstStopsMap = {};
     }
 
     calendar = results.calendar || [];
@@ -378,7 +377,7 @@ function clearAllMapLayersAndMarkers() {
   filteredTrips = [];
   // Clear precomputed maps
   tripStartTimeMap = {};
-  tripStopsMap = {};
+  tripFirstStopsMap = {};
   stopTimesTripIndex = {};
   // Clear short-name lookup
   shortAndLongNamesByType = {};
@@ -696,7 +695,8 @@ function plotFilteredStopsAndShapes(tripsToShow) {
     const usedShapes = new Set();
     tripsToShow.forEach(t => {
       usedShapes.add(t.shape_id);
-      (tripStopsMap[t.trip_id] || []).forEach(id => usedStops.add(id));
+      const tripStopTimes = stopTimes.filter(st => st.trip_id === t.trip_id);
+      tripStopTimes.forEach(st => usedStops.add(st.stop_id));
     });
     stopsToPlot = stops.filter(s => usedStops.has(s.id));
     shapesToPlot = shapes.filter(s => usedShapes.has(s.shape_id));
@@ -979,9 +979,8 @@ function UpdateVehiclePositions(){
             if (nextTrip && nextTrip.startTime > endTime && remainingTrips.includes(nextTrip)) {
             //there is a next trip with the same blockID
             // Calculate distance and layover
-            const endPos = path[path.length - 1];
-            const stopIds = tripStopsMap[nextTrip.trip_id];
-            const startStopId = stopIds ? stopIds[0] : null;
+            const endPos = path[path.length - 1];            
+            const startStopId = tripFirstStopsMap[nextTrip.trip_id];
             const startStop = stops.find(s => s.id === startStopId);
                     
             const dist = calculateDistance(endPos.lat, endPos.lon, startStop.lat, startStop.lon);

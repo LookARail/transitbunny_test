@@ -221,7 +221,7 @@ function setupTransitScoreMapClickHandler() {
       }
 
       // 4. Trigger filtering
-      if (typeof filterTrips === "function") filterTrips();
+      if (typeof filterTrips === "function") await filterTrips();
 
       showTransitScorePopup("No routes/service patterns selected. Showing results for all routes on the first weekday.");
     }

@@ -2,13 +2,8 @@
 let tripStopsMap_analysis = {};
 let stopIdToName = {};
 
-function generateRouteStatsTable(filteredTrips, shapes, stops, stopTimes, routes) {
+function generateRouteStatsTable(filteredTrips, routes) {
   // Map shape_id to its shape points
-  const shapesById = {};
-  shapes.forEach(s => {
-    if (!shapesById[s.shape_id]) shapesById[s.shape_id] = [];
-    shapesById[s.shape_id].push(s);
-  });
 
   RecomputeMap();
 
@@ -234,13 +229,6 @@ function setupCompareServiceDatesFeature() {
     // Union of all route_ids in either set
     const allRouteIds = new Set([...Object.keys(byRoute1), ...Object.keys(byRoute2)]);
 
-    // Precompute shapesById for fast lookup
-    const shapesById = {};
-    shapes.forEach(s => {
-      if (!shapesById[s.shape_id]) shapesById[s.shape_id] = [];
-      shapesById[s.shape_id].push(s);
-    });
-
     function computeStats(tripArr) {
       let nTrips = tripArr.length;
       // Group trips by shape_id
@@ -414,7 +402,7 @@ function RecomputeMap(){
 window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('GenerateStat').addEventListener('click', () => {
     console.log('Generating route statistics...');
-    generateRouteStatsTable(filteredTrips, shapes, stops, stopTimes, routes);    
+    generateRouteStatsTable(filteredTrips, routes);    
   });
 
   document.getElementById('DownloadStat').addEventListener('click', () => {

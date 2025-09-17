@@ -1,5 +1,6 @@
 // gtfsWorker.js - PARSING + stop_times -> IndexedDB storage (one record per trip_id)
 importScripts('libs/papaparse.min.js');
+importScripts('libs/fflate.min.js');
 
 // --- Utilities ---
 function timeToSeconds(t) {
@@ -192,25 +193,47 @@ function parseBlobToObjects(bytesOrBuffer, fileLabel) {
   });
 }
 
+
+
+
 // --- Unified onmessage handler ---
 onmessage = async function (e) {
   try {
     // handle filtered-stop-times requests (reads from IndexedDB)
     if (e.data && e.data.type === 'extractStopTimesForTrips') {
-      const reqId = e.data.requestId || null;
+      const requestId = e.data.requestId;
       const tripIds = e.data.tripIds || [];
+      const total = tripIds.length;
+      let completed = 0;
       const db = await openGTFSDB();
-      try {
-        const stopTimes = await getStopTimesForTripsFromIDB(db, tripIds);
-        postMessage({ type: 'filteredStopTimes', requestId: reqId, stopTimes });
-      } catch (err) {
-        postMessage({ type: 'error', requestId: reqId, message: err.message || String(err) });
+      const stopTimes = [];
+
+      for (const tid of tripIds) {
+        const rec = await idbGet(db, 'stop_times_by_trip', tid);
+        if (rec && rec.stop_times) stopTimes.push(...rec.stop_times.map(st => ({ ...st, trip_id: tid })));
+        completed++;
+        // Report progress every 100 trips or at the end
+        if (completed % 100 === 0 || completed === total) {
+          postMessage({
+            type: 'progress',
+            file: 'filtered_stop_times',
+            progress: completed / total
+          });
+        }
       }
+
+      postMessage({ type: 'filteredStopTimes', stopTimes, requestId });
       return;
     }
 
-    // Otherwise expect full parse with zipFile mapping (files->Uint8Array)
-    const zipFileCandidate = e.data && (e.data.zipFile || e.data.rawZip) ? (e.data.zipFile || e.data.rawZip) : null;
+    // --- NEW: handle rawZip ---
+    let zipFileCandidate = null;
+    if (e.data && e.data.rawZip) {
+      // Unzip the raw ZIP buffer
+      zipFileCandidate = fflate.unzipSync(new Uint8Array(e.data.rawZip));
+    } else if (e.data && e.data.zipFile) {
+      zipFileCandidate = e.data.zipFile;
+    }
     const zipFile = (zipFileCandidate && typeof zipFileCandidate === 'object' && (zipFileCandidate['stops.txt'] || zipFileCandidate['routes.txt'])) 
                     ? zipFileCandidate 
                     : null;
@@ -238,7 +261,7 @@ onmessage = async function (e) {
 
     // prepare results
     const results = {
-      stops: null, routes: null, trips: null, shapes: null,
+      stops: null, routes: null, trips: null, 
       calendar: null, calendar_dates: null,
       stopsById: null, shapesById: null, shapeIdToDistance: null,
       stop_times_trip_index: null, tripStartTimeMap: null, tripFirstStopsMap: null
@@ -313,7 +336,6 @@ onmessage = async function (e) {
         }
         shapeIdToDistance[id] = cum;
       });
-      results.shapes = shapes;
       results.shapesById = shapesById;
       results.shapeIdToDistance = shapeIdToDistance;
 

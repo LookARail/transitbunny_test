@@ -387,61 +387,62 @@ onmessage = async function (e) {
                 avgBytesPerLine = sampleLineBytes / 100;
               }
             }
-            // After 100 lines, use the estimate
-            if (avgBytesPerLine && lineNum % 10000 === 0) {
-              const estimatedTotalLines = Math.round(totalBytes / avgBytesPerLine);
-              const pct = 10 + Math.round(80 * (lineNum / estimatedTotalLines));
-              postMessage({ type: 'progress', file: 'stop_times.txt', progress: pct / 100 });
-            }
-
-            const row = resultsStep.data;
-            const tripId = row.trip_id ? row.trip_id.trim() : '';
-            const stopId = row.stop_id ? row.stop_id.trim() : '';
-            const stopSeq = row.stop_sequence ? parseInt(row.stop_sequence, 10) : 0;
-            const depTimeStr = row.departure_time ? row.departure_time.trim() : '';
-            
-            // build small in-memory index (tripLineIndex)
-            if (tripId !== lastTripId) {
-              if (lastTripId !== null) {
-                tripLineIndex[lastTripId].end = lineNum - 1;
+            if(false){              
+              // After 100 lines, use the estimate
+              if (avgBytesPerLine && lineNum % 10000 === 0) {
+                const estimatedTotalLines = Math.round(totalBytes / avgBytesPerLine);
+                const pct = 10 + Math.round(80 * (lineNum / estimatedTotalLines));
+                postMessage({ type: 'progress', file: 'stop_times.txt', progress: pct / 100 });
               }
-              tripLineIndex[tripId] = { start: lineNum, end: lineNum };
-              lastTripId = tripId;
-            } else {
-              tripLineIndex[tripId].end = lineNum;
-            }
-            
-            // tripStops map
-            if (!tripStops[tripId]) tripStops[tripId] = [];
-            if (stopId) tripStops[tripId].push({ stop_id: stopId, stop_sequence: stopSeq });
-            
-            // tripStartTimeMap
-            if(stopSeq ===1){
-              const depTimeSec = depTimeStr ? timeToSeconds(depTimeStr) : null;
-              if (depTimeSec != null && (!tripStartTimeMap[tripId] || depTimeSec < tripStartTimeMap[tripId])) {
-                tripStartTimeMap[tripId] = depTimeSec;
+
+              const row = resultsStep.data;
+              const tripId = row.trip_id ? row.trip_id.trim() : '';
+              const stopId = row.stop_id ? row.stop_id.trim() : '';
+              const stopSeq = row.stop_sequence ? parseInt(row.stop_sequence, 10) : 0;
+              const depTimeStr = row.departure_time ? row.departure_time.trim() : '';
+              
+              // build small in-memory index (tripLineIndex)
+              if (tripId !== lastTripId) {
+                if (lastTripId !== null) {
+                  tripLineIndex[lastTripId].end = lineNum - 1;
+                }
+                tripLineIndex[tripId] = { start: lineNum, end: lineNum };
+                lastTripId = tripId;
+              } else {
+                tripLineIndex[tripId].end = lineNum;
               }
-            }
+              
+              // tripStops map
+              if (!tripStops[tripId]) tripStops[tripId] = [];
+              if (stopId) tripStops[tripId].push({ stop_id: stopId, stop_sequence: stopSeq });
+              
+              // tripStartTimeMap
+              if(stopSeq ===1){
+                const depTimeSec = depTimeStr ? timeToSeconds(depTimeStr) : null;
+                if (depTimeSec != null && (!tripStartTimeMap[tripId] || depTimeSec < tripStartTimeMap[tripId])) {
+                  tripStartTimeMap[tripId] = depTimeSec;
+                }
+              }
 
-            // accumulation for IDB storing by trip
-            if (!currTrip) {
-              currTrip = tripId;
-              currBuffer = [];
-            }
-            if (tripId !== currTrip) {
-              // flush current buffer to IDB
-              queueTripWrite(db, currTrip, currBuffer.splice(0, currBuffer.length));
-              currTrip = tripId;
-              currBuffer = [];
-            }
-            // add current row to buffer (small object)
-            currBuffer.push({              
-              arrival_time: row.arrival_time ? row.arrival_time.trim() : '',
-              departure_time: row.departure_time ? row.departure_time.trim() : '',
-              stop_id: stopId,
-              stop_sequence: stopSeq
-            });
-
+              // accumulation for IDB storing by trip
+              if (!currTrip) {
+                currTrip = tripId;
+                currBuffer = [];
+              }
+              if (tripId !== currTrip) {
+                // flush current buffer to IDB
+                queueTripWrite(db, currTrip, currBuffer.splice(0, currBuffer.length));
+                currTrip = tripId;
+                currBuffer = [];
+              }
+              // add current row to buffer (small object)
+              currBuffer.push({              
+                arrival_time: row.arrival_time ? row.arrival_time.trim() : '',
+                departure_time: row.departure_time ? row.departure_time.trim() : '',
+                stop_id: stopId,
+                stop_sequence: stopSeq
+              });
+          }
             if (lineNum % 100000 === 0) postMessage({ type: 'status', message: `Worker: processed ${lineNum} stop_time lines` });
           },
           complete: function() {

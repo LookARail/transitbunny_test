@@ -237,9 +237,6 @@ onmessage = async function (e) {
     }
     // --- NEW: handle rawZip ---
 
-    const db = await openGTFSDB();
-    await clearGTFSStores(db);
-
     let zipFileCandidate = null;
     if (e.data && e.data.rawZip) {
       // Unzip the raw ZIP buffer
@@ -357,10 +354,12 @@ onmessage = async function (e) {
 
     // --- stop_times: stream-parse and write per-trip to IndexedDB (also build small indices) ---
 
+    const db = await openGTFSDB();
+    await clearGTFSStores(db);
+
     if (zipFile['stop_times.txt']) {
       postMessage({ type: 'status', message: 'Worker: ingesting stop_times.txt to IndexedDB (streaming)' });
 
-      const db = await openGTFSDB();
       const stBlob = new Blob([zipFile['stop_times.txt']]);
 
       // State for small indices (kept in-memory)

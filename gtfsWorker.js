@@ -9,173 +9,8 @@ function timeToSeconds(t) {
   if (parts.length !== 3) return null;
   return parts[0] * 3600 + parts[1] * 60 + parts[2];
 }
-
-// --- IndexedDB helpers ---
-let _gtfsDB = null;
-function openGTFSDB(dbName = 'gtfs_db', version = 1) {
-  return new Promise((resolve, reject) => {
-    if (_gtfsDB) return resolve(_gtfsDB);
-    const req = indexedDB.open(dbName, version);
-    req.onupgradeneeded = (ev) => {
-      const db = ev.target.result;
-      if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath: 'k' });
-      if (!db.objectStoreNames.contains('stop_times_by_trip')) db.createObjectStore('stop_times_by_trip', { keyPath: 'trip_id' });
-      if (!db.objectStoreNames.contains('trip_index')) db.createObjectStore('trip_index', { keyPath: 'trip_id' });
-    };
-    req.onsuccess = () => {
-      _gtfsDB = req.result;
-      resolve(_gtfsDB);
-    };
-    req.onerror = () => reject(req.error || new Error('IndexedDB open error'));
-  });
-}
-
-function idbPut(db, storeName, value) {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction([storeName], 'readwrite');
-    const st = tx.objectStore(storeName);
-    const r = st.put(value);
-    r.onsuccess = () => resolve(r.result);
-    r.onerror = () => reject(r.error || new Error('IDB put error'));
-  });
-}
-
-function idbGet(db, storeName, key) {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction([storeName], 'readonly');
-    const st = tx.objectStore(storeName);
-    const r = st.get(key);
-    r.onsuccess = () => resolve(r.result);
-    r.onerror = () => reject(r.error || new Error('IDB get error'));
-  });
-}
-
-// --- Write queue for per-trip writes to avoid many tiny transactions ---
-// ---- Batched trip-write queue (faster than many small transactions) ----
-
-// tuning knobs - adjust to taste
-const TRIP_BATCH_SIZE = 100;        // how many trip records to group per transaction
-const TRIP_WRITE_CONCURRENCY = 1;   // how many batch transactions may run concurrently
-
-// internal batch buffers
-let _tripBatch = [];                // accumulating items until we reach batch size
-let _tripBatchesPending = [];       // batches ready to be written (each batch is array of items)
-let _tripWritesInProgress = 0;      // number of batch transactions currently running
-
-// queue a single trip write (called by parser)
-function queueTripWrite(db, tripId, arr) {
-  // sort here to keep final write simple
-  arr.sort((a,b) => (a.stop_sequence || 0) - (b.stop_sequence || 0));
-  _tripBatch.push({ db, tripId, arr });
-
-  // if batch reached size, move to pending list for processing
-  if (_tripBatch.length >= TRIP_BATCH_SIZE) {
-    const batch = _tripBatch.splice(0, TRIP_BATCH_SIZE);
-    _tripBatchesPending.push(batch);
-    setTimeout(processPendingBatches, 0);
-  }
-}
-
-// flush any leftover items into pending batches (call this once parsing is complete)
-function flushTripBatch() {
-  if (_tripBatch.length === 0) return;
-  const batch = _tripBatch.splice(0, _tripBatch.length);
-  _tripBatchesPending.push(batch);
-  setTimeout(processPendingBatches, 0);
-}
-
-// process pending batches with concurrency limit
-function processPendingBatches() {
-  if (_tripWritesInProgress >= TRIP_WRITE_CONCURRENCY) return;
-  const batch = _tripBatchesPending.shift();
-  if (!batch) return;
-
-  _tripWritesInProgress++;
-
-  // pick db from first item (all items in batch will have same DB in usage)
-  const db = batch[0].db;
-  const tx = db.transaction(['stop_times_by_trip', 'trip_index'], 'readwrite');
-  const st = tx.objectStore('stop_times_by_trip');
-  const idx = tx.objectStore('trip_index');
-
-  try {
-    for (const item of batch) {
-      st.put({ trip_id: item.tripId, stop_times: item.arr });
-      const first = item.arr.find(r => r.stop_sequence === 1) || item.arr[0] || {};
-      const startAcc = first ? (first.departure_time || first.arrival_time || null) : null;
-      idx.put({ trip_id: item.tripId, start_time: startAcc, stop_count: item.arr.length });
-    }
-  } catch (err) {
-    // continue; tx.onerror will still run if DB-level problem occurs
-    console.warn('Batch write loop error', err);
-  }
-
-  tx.oncomplete = () => {
-    _tripWritesInProgress--;
-    setTimeout(processPendingBatches, 0);
-  };
-  tx.onerror = () => {
-    _tripWritesInProgress--;
-    setTimeout(processPendingBatches, 0);
-  };
-}
-
-// Wait until all pending batches and in-flight transactions are done.
-// Call flushTripBatch() first to ensure remaining partial batch is queued.
-function waitForQueuedWrites() {
-  return new Promise((resolve) => {
-    const check = () => {
-      if (_tripBatch.length === 0 && _tripBatchesPending.length === 0 && _tripWritesInProgress === 0) {
-        resolve();
-      } else {
-        setTimeout(check, 50);
-      }
-    };
-    check();
-  });
-}
-
-async function clearGTFSStores(db) {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(['stop_times_by_trip', 'trip_index'], 'readwrite');
-    tx.objectStore('stop_times_by_trip').clear();
-    tx.objectStore('trip_index').clear();
-    tx.oncomplete = resolve;
-    tx.onerror = () => reject(tx.error || new Error('IndexedDB clear error'));
-  });
-}
-
-// --- Helper to fetch many trips from IDB with limited concurrency ---
-async function getStopTimesForTripsFromIDB(db, tripIds) {
-  const results = {};
-  const concurrency = 8;
-  let i = 0;
-  async function workerLoop() {
-    while (true) {
-      const idx = i++;
-      if (idx >= tripIds.length) break;
-      const tid = tripIds[idx];
-      try {
-        const rec = await idbGet(db, 'stop_times_by_trip', tid);
-        // Add trip_id back to each stop_time object
-        results[tid] = rec && rec.stop_times
-          ? rec.stop_times.map(st => ({ ...st, trip_id: tid }))
-          : [];
-      } catch (err) {
-        results[tid] = []; // on error return empty
-      }
-    }
-  }
-  const workers = new Array(Math.min(concurrency, tripIds.length)).fill(0).map(() => workerLoop());
-  await Promise.all(workers);
-  // produce flattened array in same trip order (if desired)
-  const flattened = [];
-  for (const t of tripIds) {
-    if (results[t] && results[t].length) {
-      flattened.push(...results[t]);
-    }
-  }
-  return flattened;
+function postProgress(file, pct) {
+  postMessage({ type: 'progress', file, progress: pct });
 }
 
 // --- parse helper for small CSVs (keeps behaviour for other files) ---
@@ -187,7 +22,7 @@ function parseBlobToObjects(bytesOrBuffer, fileLabel) {
         header: true,
         skipEmptyLines: true,
         complete: function(results) {
-          postMessage({ type: 'progress', file: fileLabel, progress: 1 });
+          postProgress(fileLabel, 1);
           resolve(results.data);
         },
         error: function(err) {
@@ -202,6 +37,133 @@ function parseBlobToObjects(bytesOrBuffer, fileLabel) {
 
 
 
+async function parseStopTimesStreamFromUint8Array(u8, tripsToFetchSet, onRow, onProgress) {
+  const DECODER = new TextDecoder('utf-8');
+  const CHUNK = 1 << 20; // 1 MiB chunks; tune if needed (2–4 MiB for a bit more speed)
+  const totalBytes = u8.byteLength;
+  let processedBytes = 0;
+
+  // CSV state
+  const delimiter = ',';
+  const quote = '"';
+  let inQuotes = false;
+  let field = '';
+  let row = [];
+  let header = null;
+
+  // For CRLF split across chunks
+  let pendingSkipLF = false;
+  // Strip BOM on first decoded string (if present)
+  let firstChunk = true;
+
+  // Column indexes (after header parsed)
+  let idx_trip_id = -1, idx_stop_id = -1, idx_stop_seq = -1, idx_arr = -1, idx_dep = -1;
+
+  const flushRow = () => {
+    row.push(field);
+    field = '';
+
+    if (!header) {
+      header = row;
+      row = [];
+
+      // Remove BOM if present in first header cell
+      if (header.length && header[0] && header[0].charCodeAt(0) === 0xFEFF) {
+        header[0] = header[0].slice(1);
+      }
+      idx_trip_id = header.indexOf('trip_id');
+      idx_stop_id = header.indexOf('stop_id');
+      idx_stop_seq = header.indexOf('stop_sequence');
+      idx_arr     = header.indexOf('arrival_time');
+      idx_dep     = header.indexOf('departure_time');
+      return;
+    }
+
+    // Quickly read needed fields by index
+    const get = (idx) => (idx >= 0 ? (row[idx] || '') : '');
+    const tripId = get(idx_trip_id).trim();
+    if (tripId && tripsToFetchSet.has(tripId)) {
+      const stopId  = get(idx_stop_id).trim();
+      const stopSeq = parseInt(get(idx_stop_seq), 10) || 0;
+      const arrTime = get(idx_arr).trim();
+      const depTime = get(idx_dep).trim();
+
+      onRow(tripId, {
+        trip_id:        tripId,
+        stop_id:        stopId,
+        stop_sequence:  stopSeq,
+        arrival_time:   arrTime,
+        departure_time: depTime
+      });
+    }
+    row = [];
+  };
+
+  const processChunkString = (chunkStr) => {
+    if (firstChunk) {
+      firstChunk = false;
+      // Strip BOM if whole-file BOM was decoded at start
+      if (chunkStr.charCodeAt(0) === 0xFEFF) chunkStr = chunkStr.slice(1);
+    }
+
+    for (let i = 0; i < chunkStr.length; i++) {
+      let c = chunkStr[i];
+
+      // Handle CRLF across chunk boundaries
+      if (pendingSkipLF) {
+        pendingSkipLF = false;
+        if (c === '\n') continue; // consume LF in CRLF
+        // else proceed (lone CR)
+      }
+
+      if (c === quote) {
+        if (inQuotes && i + 1 < chunkStr.length && chunkStr[i + 1] === quote) {
+          field += quote; i++; // escaped quote ("")
+        } else {
+          inQuotes = !inQuotes;
+        }
+        continue;
+      }
+
+      if (!inQuotes) {
+        if (c === delimiter) {
+          row.push(field); field = '';
+          continue;
+        }
+        if (c === '\r' || c === '\n') {
+          flushRow();
+          if (c === '\r') pendingSkipLF = true; // expect LF in CRLF
+          continue;
+        }
+      }
+
+      field += c;
+    }
+  };
+
+  for (let offset = 0; offset < totalBytes; offset += CHUNK) {
+    const end = Math.min(totalBytes, offset + CHUNK);
+    const slice = u8.subarray(offset, end);
+    const s = DECODER.decode(slice, { stream: end < totalBytes });
+    processChunkString(s);
+
+    processedBytes = end;
+    if (onProgress) {
+      onProgress(Math.min(0.999, processedBytes / totalBytes));
+    }
+  }
+
+  // Finalize (if file didn't end with a newline)
+  if (inQuotes) {
+    // Malformed CSV (unterminated quote) — best-effort close
+    inQuotes = false;
+  }
+  if (field.length > 0 || row.length > 0) {
+    flushRow();
+  }
+}
+
+
 let gtfsZipBuffer = null; // Store zipped GTFS file
 
 // --- Unified onmessage handler ---
@@ -209,90 +171,70 @@ onmessage = async function (e) {
   try {
     // handle filtered-stop-times requests (reads from IndexedDB)
     if (e.data && e.data.type === 'extractStopTimesForTrips') {
-      const tripIds = e.data.tripIds || [];
+            
+      const tripIds   = e.data.tripIds || [];
       const requestId = e.data.requestId;
-      const db = await openGTFSDB();
+
+      // Edge cases
+      if (!gtfsZipBuffer) {
+        postMessage({ type: 'error', message: 'GTFS ZIP not loaded in worker. Load rawZip first.' });
+        postMessage({ type: 'filteredStopTimes', stopTimes: [], requestId });
+        return;
+      }
+      if (!tripIds.length) {
+        postMessage({ type: 'filteredStopTimes', stopTimes: [], requestId });
+        return;
+      }
+
+      // Unzip once; obtain stop_times.txt as Uint8Array
+      let zipObj;
+      try {
+        zipObj = fflate.unzipSync(new Uint8Array(gtfsZipBuffer));
+      } catch (err) {
+        postMessage({ type: 'error', message: 'Failed to unzip GTFS: ' + (err?.message || String(err)) });
+        postMessage({ type: 'filteredStopTimes', stopTimes: [], requestId });
+        return;
+      }
+
+      const stBytes = zipObj['stop_times.txt'];
+      if (!stBytes) {
+        postMessage({ type: 'error', message: 'stop_times.txt missing from GTFS ZIP' });
+        postMessage({ type: 'filteredStopTimes', stopTimes: [], requestId });
+        return;
+      }
+
+      const tripsToFetchSet = new Set(tripIds);
       const stopTimes = [];
 
-      // 1. Check IndexedDB for each trip
-      const tripsToFetch = [];
-      for (const tripId of tripIds) {
-        const rec = await idbGet(db, 'stop_times_by_trip', tripId);
-        if (rec && rec.stop_times) {
-          stopTimes.push(...rec.stop_times.map(st => ({ ...st, trip_id: tripId })));
-        } else {
-          tripsToFetch.push(tripId);
-        }
-        // else: trip not found, skip
+      const onRow = (_tripId, rowObj) => {
+        // rowObj already contains { trip_id, stop_id, stop_sequence, arrival_time, departure_time }
+        stopTimes.push(rowObj);
+      };
+
+      const onProgress = (pct) => {
+        postMessage({ type: 'progress', file: 'filtered_stop_times', progress: pct });
+      };
+
+      postMessage({ type: 'status', message: 'Worker: parsing stop_times.txt (direct stream)' });
+
+      try {
+        await parseStopTimesStreamFromUint8Array(stBytes, tripsToFetchSet, onRow, onProgress);
+      } catch (err) {
+        postMessage({ type: 'error', message: 'CSV parse error for stop_times: ' + (err?.message || String(err)) });
+        postMessage({ type: 'filteredStopTimes', stopTimes: [], requestId });
+        return;
       }
 
-      // 2. If any trips are missing, parse stop_times.txt ONCE and extract all needed trips
-      if (tripsToFetch.length > 0) {
-        const zipObj = fflate.unzipSync(new Uint8Array(gtfsZipBuffer));
-        const stBlob = new Blob([zipObj['stop_times.txt']]);
-        const tripsToFetchSet = new Set(tripsToFetch);
-        const tripRowsMap = {}; // trip_id -> array of rows
-
-        let sampleLineBytes = 0, sampleLineCount = 0, avgBytesPerLine = 0;
-        const totalBytes = zipObj['stop_times.txt'].byteLength;
-        let lineNum = 0;
-
-        await new Promise((resolve, reject) => {
-          Papa.parse(stBlob, {
-            header: true,
-            skipEmptyLines: true,
-            step: function(resultsStep) {
-              lineNum++;
-              // Estimate bytes per line using the first 100 lines
-              if (sampleLineCount < 100) {
-                sampleLineBytes += JSON.stringify(resultsStep.data).length;
-                sampleLineCount++;
-                if (sampleLineCount === 100) {
-                  avgBytesPerLine = sampleLineBytes / 100;
-                }
-              }
-              // After 100 lines, use the estimate to post progress every 10,000 lines
-              if (avgBytesPerLine && lineNum % 10000 === 0) {
-                const estimatedTotalLines = Math.round(totalBytes / avgBytesPerLine);
-                const pct = Math.min(0.99, lineNum / estimatedTotalLines);
-                postMessage({ type: 'progress', file: 'filtered_stop_times', progress: pct });
-                postMessage({ type: 'status', message:`Reloading schedule for filtered trips... (${lineNum}/${estimatedTotalLines})` });
-
-              }
-
-              // Existing logic for collecting rows:
-              const row = resultsStep.data;
-              const tripId = row.trip_id ? row.trip_id.trim() : '';
-              if (tripsToFetchSet.has(tripId)) {
-                if (!tripRowsMap[tripId]) tripRowsMap[tripId] = [];
-                tripRowsMap[tripId].push({ ...row, trip_id: tripId });
-              }
-            },
-            complete: resolve,
-            error: reject
-          });
-        });
-
-        // 3. Store and collect results for newly fetched trips
-        for (const tripId of tripsToFetch) {
-          if (tripRowsMap[tripId]) {
-            await idbPut(db, 'stop_times_by_trip', { trip_id: tripId, stop_times: tripRowsMap[tripId] });
-            stopTimes.push(...tripRowsMap[tripId]);
-          }
-        }
-      }
-
+      // Parsing complete
+      postMessage({ type: 'progress', file: 'filtered_stop_times', progress: 1.0 });
       postMessage({ type: 'filteredStopTimes', stopTimes, requestId });
       return;
+
     }
     // --- NEW: handle rawZip ---
 
     
     if (e.data && e.data.rawZip) {
-      // Clear IndexedDB
-      const db = await openGTFSDB();
-      await clearGTFSStores(db);
-
       gtfsZipBuffer = e.data.rawZip; // store for later use
 
       // Unzip the raw ZIP buffer
@@ -324,7 +266,7 @@ onmessage = async function (e) {
         stops: null, routes: null, trips: null, 
         calendar: null, calendar_dates: null,
         stopsById: null, shapesById: null, shapeIdToDistance: null,
-        stop_times_trip_index: null,tripFirstStopsMap: null
+        stop_times_trip_index: null
       };
 
       // --- stops ---

@@ -610,13 +610,16 @@ async function filterTrips() {
   }
 
   //clear and rebuild stopTimes for filteredTrips, if there there is >0 filteredTrips
-  if (filteredTrips.length > 0) {
-    //stopTimes are popualted here
-    stopTimes = [];
+  //new stopTimes are added here
+  
+  const haveTrips = new Set(stopTimes.map(r => String(r.trip_id)));
+  const missingTripIds = filteredTrips.filter(tid => !haveTrips.has(String(tid.trip_id)));
+
+  if (missingTripIds.length > 0) {
     showProgressBar();    
-    stopTimes = await requestFilteredStopTimesFromWorker(filteredTrips.map(t => t.trip_id));              
+    const newStopTimes = await requestFilteredStopTimesFromWorker(missingTripIds.map(t => t.trip_id));              
     hideProgressBar();
-    
+    stopTimes = stopTimes.concat(newStopTimes);
     tripStartTimeAndStopMap = {}; //build tripStartTimemap   
     stopTimes.forEach(st => {
       if (st.stop_sequence == 1) {
@@ -625,8 +628,7 @@ async function filterTrips() {
           const depTimeSec = timeToSeconds(depTimeStr);
           // Only set if not already set, or if this depTimeSec is earlier
           if (
-            !tripStartTimeAndStopMap[st.trip_id] ||
-            depTimeSec < tripStartTimeAndStopMap[st.trip_id].departureTimeSec
+            !tripStartTimeAndStopMap[st.trip_id] 
           ) {
             tripStartTimeAndStopMap[st.trip_id] = {
               departureTimeSec: depTimeSec,
@@ -825,7 +827,7 @@ function initializeAnimation() {
 
   // prepare remaining
   remainingTrips = filteredTrips.map(t => {
-    t.startTime = tripStartTimeAndStopMap[t.trip_id].departureTimeSec ?? null;
+    t.startTime = tripStartTimeAndStopMap[t.trip_id]?.departureTimeSec ?? null;
     return t;
   }).filter(t => t.startTime != null);
 

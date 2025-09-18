@@ -57,7 +57,7 @@ function idbGet(db, storeName, key) {
 // ---- Batched trip-write queue (faster than many small transactions) ----
 
 // tuning knobs - adjust to taste
-const TRIP_BATCH_SIZE = 5000;        // how many trip records to group per transaction
+const TRIP_BATCH_SIZE = 100;        // how many trip records to group per transaction
 const TRIP_WRITE_CONCURRENCY = 1;   // how many batch transactions may run concurrently
 
 // internal batch buffers
@@ -387,7 +387,7 @@ onmessage = async function (e) {
                 avgBytesPerLine = sampleLineBytes / 100;
               }
             }
-            if(false){              
+            if(true){              
               // After 100 lines, use the estimate
               if (avgBytesPerLine && lineNum % 10000 === 0) {
                 const estimatedTotalLines = Math.round(totalBytes / avgBytesPerLine);

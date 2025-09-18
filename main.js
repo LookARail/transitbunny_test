@@ -35,8 +35,7 @@ let genericWeekdayDates = {}; // { 'Monday (Generic)': [date1, date2, ...], ... 
 let serviceDateFilterMode = false; // true if using service-date filter
 
 // === Precomputed maps ===
-let tripStartTimeMap = {};   // 
-let tripFirstStopsMap     = {};   // 
+let tripStartTimeAndStopMap = {};   // 
 let blockIdTripMap = {};
 let stopTimesText = '';
 
@@ -237,14 +236,7 @@ async function LoadGTFSZipFile(zipFileInput) {
     shapesById = results.shapesById || {};
     shapeIdToDistance = results.shapeIdToDistance || {};
     routes = results.routes || [];
-    trips = results.trips || [];    
-    
-    if (results.tripFirstStopsMap) {
-      tripFirstStopsMap = results.tripFirstStopsMap;
-    } else {
-      tripFirstStopsMap = {};
-    }
-
+    trips = results.trips || [];        
     calendar = results.calendar || [];
     calendarDates = results.calendar_dates || [];
 
@@ -322,7 +314,7 @@ function clearAllMapLayersAndMarkers() {
   serviceIds = [];
   filteredTrips = [];
   // Clear precomputed maps
-  tripStartTimeMap = {};
+  tripStartTimeAndStopMap = {};
   tripFirstStopsMap = {};
   // Clear short-name lookup
   shortAndLongNamesByType = {};
@@ -624,25 +616,27 @@ async function filterTrips() {
     showProgressBar();    
     stopTimes = await requestFilteredStopTimesFromWorker(filteredTrips.map(t => t.trip_id));              
     hideProgressBar();
-    console.log(`Filtered trips: ${filteredTrips.length}, Filtered stopTimes: ${stopTimes.length}`);    
-
-    tripStartTimeMap = {}; //build tripStartTimemap
+    
+    tripStartTimeAndStopMap = {}; //build tripStartTimemap   
     stopTimes.forEach(st => {
-      if (st.stop_sequence === 1) {
+      if (st.stop_sequence == 1) {
         const depTimeStr = st.departure_time || st.arrival_time || null;
         if (depTimeStr) {
           const depTimeSec = timeToSeconds(depTimeStr);
           // Only set if not already set, or if this depTimeSec is earlier
           if (
-            !tripStartTimeMap[st.trip_id] ||
-            depTimeSec < tripStartTimeMap[st.trip_id]
+            !tripStartTimeAndStopMap[st.trip_id] ||
+            depTimeSec < tripStartTimeAndStopMap[st.trip_id].departureTimeSec
           ) {
-            tripStartTimeMap[st.trip_id] = depTimeSec;
+            tripStartTimeAndStopMap[st.trip_id] = {
+              departureTimeSec: depTimeSec,
+              stop_id: st.stop_id
+            };
           }
         }
       }
     });
-    //populate the first departure maps 
+    console.log(`Filtered trips: ${filteredTrips.length}, Filtered stopTimes: ${stopTimes.length}, Unique trip start times: ${Object.keys(tripStartTimeAndStopMap).length}`);    
   }
 }
 
@@ -831,7 +825,7 @@ function initializeAnimation() {
 
   // prepare remaining
   remainingTrips = filteredTrips.map(t => {
-    t.startTime = tripStartTimeMap[t.trip_id] ?? null;
+    t.startTime = tripStartTimeAndStopMap[t.trip_id].departureTimeSec ?? null;
     return t;
   }).filter(t => t.startTime != null);
 
@@ -947,7 +941,7 @@ function UpdateVehiclePositions(){
             //there is a next trip with the same blockID
             // Calculate distance and layover
             const endPos = path[path.length - 1];            
-            const startStopId = tripFirstStopsMap[nextTrip.trip_id];
+            const startStopId = tripStartTimeAndStopMap[nextTrip.trip_id].stop_id;
             const startStop = stops.find(s => s.id === startStopId);
                     
             const dist = calculateDistance(endPos.lat, endPos.lon, startStop.lat, startStop.lon);

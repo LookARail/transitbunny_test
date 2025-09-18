@@ -389,7 +389,7 @@ function updateHeadwayPlotForHour(hour) {
   const hourTrips = {};
   filteredTrips.forEach(trip => {
     const routeId = trip.route_id;
-    const startTime = tripStartTimeMap[trip.trip_id];
+    const startTime = tripStartTimeAndStopMap[trip.trip_id].startTime;
     if (startTime == null) return;
     const tripHour = Math.floor(startTime / 3600);
     if (tripHour !== hour) return;

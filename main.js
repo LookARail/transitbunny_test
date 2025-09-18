@@ -158,37 +158,38 @@ async function LoadGTFSZipFile(zipFileInput) {
           setProgressBar(Math.max(lastOverall, 8));
           console.log('[Worker status]', msg.message);
         } else if (msg.type === 'progress') {
-          if (msg.file && weights[msg.file] !== undefined) {
-            fileProgress[msg.file] = Math.max(0, Math.min(1, msg.progress || 0));
-          } else if (msg.file) {            
-            if (fileProgress[msg.file] === undefined) { fileProgress[msg.file] = Math.max(0, Math.min(1, msg.progress || 0)); weights[msg.file] = 0.0001; }
-            else fileProgress[msg.file] = Math.max(fileProgress[msg.file], Math.max(0, Math.min(1, msg.progress || 0)));
+          if (msg.file === 'filtered_stop_times') {
+            setProgressBar(Math.round((msg.progress || 0) * 100), 'Reloading schedule for filtered trips...');           
+            console.log(msg.file + ' progress:', msg.progress);
+            return;
+          }else{
+            if (msg.file && weights[msg.file] !== undefined) {
+              fileProgress[msg.file] = Math.max(0, Math.min(1, msg.progress || 0));
+            } else if (msg.file) {            
+              if (fileProgress[msg.file] === undefined) { fileProgress[msg.file] = Math.max(0, Math.min(1, msg.progress || 0)); weights[msg.file] = 0.0001; }
+              else fileProgress[msg.file] = Math.max(fileProgress[msg.file], Math.max(0, Math.min(1, msg.progress || 0)));
+            }
+            
+            let weighted = 0;
+            let sumW = 0;
+            Object.keys(weights).forEach(f => {
+              const w = weights[f] || 0;
+              weighted += w * (fileProgress[f] || 0);
+              sumW += w;
+            });
+            const avg = sumW > 0 ? (weighted / sumW) : 0;
+            
+            let overall = 10 + Math.round(avg * 80);
+            overall = Math.max(lastOverall, overall);
+            lastOverall = overall;
+            setProgressBar(overall);
           }
-
-          let weighted = 0;
-          let sumW = 0;
-          Object.keys(weights).forEach(f => {
-            const w = weights[f] || 0;
-            weighted += w * (fileProgress[f] || 0);
-            sumW += w;
-          });
-          const avg = sumW > 0 ? (weighted / sumW) : 0;
-
-          let overall = 10 + Math.round(avg * 80);
-          overall = Math.max(lastOverall, overall);
-          lastOverall = overall;
-          setProgressBar(overall);
-
         } else if (msg.type === 'done') {
           resolve(msg.results);
         } else if (msg.type === 'error') {
           reject(new Error(msg.message || 'Worker error'));
         }
-        
-        if (msg.type === 'progress' && msg.file === 'filtered_stop_times') {
-          setProgressBar(Math.round((msg.progress || 0) * 100));
-          document.getElementById('progressBarText').textContent = 'Reloading filtered stop times...';
-        }
+      
       };
 
 
@@ -238,8 +239,6 @@ async function LoadGTFSZipFile(zipFileInput) {
     routes = results.routes || [];
     trips = results.trips || [];    
     
-    tripStartTimeMap = results.tripStartTimeMap || {};
-
     if (results.tripFirstStopsMap) {
       tripFirstStopsMap = results.tripFirstStopsMap;
     } else {
@@ -325,7 +324,6 @@ function clearAllMapLayersAndMarkers() {
   // Clear precomputed maps
   tripStartTimeMap = {};
   tripFirstStopsMap = {};
-  stopTimesTripIndex = {};
   // Clear short-name lookup
   shortAndLongNamesByType = {};
   shortNameToServiceIds = {};
@@ -621,15 +619,30 @@ async function filterTrips() {
 
   //clear and rebuild stopTimes for filteredTrips, if there there is >0 filteredTrips
   if (filteredTrips.length > 0) {
+    //stopTimes are popualted here
     stopTimes = [];
-      if (filteredTrips.length > 1000) {
-        showProgressBar();
-        setProgressBar(5);
-        document.getElementById('progressBarText').textContent = 'Reloading schedule for filtered trips...';
-      }  
-    stopTimes = await requestFilteredStopTimesFromWorker(filteredTrips.map(t => t.trip_id));    
+    showProgressBar();    
+    stopTimes = await requestFilteredStopTimesFromWorker(filteredTrips.map(t => t.trip_id));              
     hideProgressBar();
-    console.log(`Filtered trips: ${filteredTrips.length}, stopTimesTripIndexSize: ${Object.keys(stopTimesTripIndex).length}, Filtered stopTimes: ${stopTimes.length}`);    
+    console.log(`Filtered trips: ${filteredTrips.length}, Filtered stopTimes: ${stopTimes.length}`);    
+
+    tripStartTimeMap = {}; //build tripStartTimemap
+    stopTimes.forEach(st => {
+      if (st.stop_sequence === 1) {
+        const depTimeStr = st.departure_time || st.arrival_time || null;
+        if (depTimeStr) {
+          const depTimeSec = timeToSeconds(depTimeStr);
+          // Only set if not already set, or if this depTimeSec is earlier
+          if (
+            !tripStartTimeMap[st.trip_id] ||
+            depTimeSec < tripStartTimeMap[st.trip_id]
+          ) {
+            tripStartTimeMap[st.trip_id] = depTimeSec;
+          }
+        }
+      }
+    });
+    //populate the first departure maps 
   }
 }
 
@@ -1069,9 +1082,12 @@ function showProgressBar() {
    document.getElementById('uiBlockOverlay').style.display = 'block'; //when loading data, block UI interaction
 
 }
-function setProgressBar(percent) {
+function setProgressBar(percent, mainText) {
+  if (!mainText){
+    mainText = 'Loading GTFS File';
+  }
   document.getElementById('progressBar').style.width = percent + '%';
-  document.getElementById('progressBarText').textContent = `Loading GTFS File: ${Math.round(percent)}%`;
+  document.getElementById('progressBarText').textContent = `${mainText}: ${Math.round(percent)}%`;
 }
 function hideProgressBar() {
   document.getElementById('progressBarContainer').style.display = 'none';

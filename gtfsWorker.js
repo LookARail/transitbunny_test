@@ -138,6 +138,16 @@ function waitForQueuedWrites() {
   });
 }
 
+async function clearGTFSStores(db) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(['stop_times_by_trip', 'trip_index'], 'readwrite');
+    tx.objectStore('stop_times_by_trip').clear();
+    tx.objectStore('trip_index').clear();
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error || new Error('IndexedDB clear error'));
+  });
+}
+
 // --- Helper to fetch many trips from IDB with limited concurrency ---
 async function getStopTimesForTripsFromIDB(db, tripIds) {
   const results = {};
@@ -225,8 +235,11 @@ onmessage = async function (e) {
       postMessage({ type: 'filteredStopTimes', stopTimes, requestId });
       return;
     }
-
     // --- NEW: handle rawZip ---
+
+    const db = await openGTFSDB();
+    await clearGTFSStores(db);
+
     let zipFileCandidate = null;
     if (e.data && e.data.rawZip) {
       // Unzip the raw ZIP buffer

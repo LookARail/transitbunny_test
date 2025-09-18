@@ -653,15 +653,14 @@ function plotFilteredStopsAndShapes(tripsToShow) {
   let stopsToPlot;
   let shapesToPlot = [];
 
-  if (Array.isArray(tripsToShow) && tripsToShow.length > 0) {
-    const usedStops = new Set();
+  if (Array.isArray(tripsToShow) && tripsToShow.length > 0) {        
+    const usedStops = new Set(stopTimes.map(st => st.stop_id));
+    stopsToPlot = stops.filter(s => usedStops.has(s.id));
+    
     const usedShapes = new Set();
     tripsToShow.forEach(t => {
       usedShapes.add(t.shape_id);
-      const tripStopTimes = stopTimes.filter(st => st.trip_id === t.trip_id);
-      tripStopTimes.forEach(st => usedStops.add(st.stop_id));
     });
-    stopsToPlot = stops.filter(s => usedStops.has(s.id));
     usedShapes.forEach(shape_id => {
       if (shapesById[shape_id]) shapesToPlot.push(...shapesById[shape_id]);
     });
@@ -669,6 +668,7 @@ function plotFilteredStopsAndShapes(tripsToShow) {
     stopsToPlot = stops;
     shapesToPlot = Object.values(shapesById).flat();
   }
+
 
   // --- Adaptive clustering: scale cluster radius by number of stops (continuous) ---
   const totalStops = stopsToPlot.length;
@@ -823,6 +823,7 @@ function initializeAnimation() {
   // compute startTime for filtered trips and find earliest
 
   // filter geometry
+
   plotFilteredStopsAndShapes(filteredTrips);
 
   // prepare remaining
@@ -954,7 +955,7 @@ function UpdateVehiclePositions(){
               //if the two trips are > 2hrs apart, treat them as two unrelated trips
               //another case is if the trips are >400m apart and within 2hrs connection, and the speed is > 5m/s (18km/h). Treat this case as if the block_id is miscoded, and the trip is not the same physical vehicl
               msg += " ALERT: This is not considered a connection although the trips share the same block_id";
-              msg += `DEBUG: endPos=${endPos.lat}${endPos.lon}, startStop=${startStop.lat}${startStop.lon}, startStopId=${startStopId}[${[...stopIds].join(', ')}]`;
+              msg += `DEBUG: endPos=${endPos.lat}${endPos.lon}, startStop=${startStop.lat}${startStop.lon}, startStopId=${startStopId}`;
               console.log(msg);
             }else{              
               // Inherit marker for next trip

@@ -653,8 +653,10 @@ function plotFilteredStopsAndShapes(tripsToShow) {
   let stopsToPlot;
   let shapesToPlot = [];
 
-  if (Array.isArray(tripsToShow) && tripsToShow.length > 0) {        
-    const usedStops = new Set(stopTimes.map(st => st.stop_id));
+  if (Array.isArray(tripsToShow) && tripsToShow.length > 0) {    
+    
+    const tripIdsToShow = new Set(tripsToShow.map(t => t.trip_id));    
+    const usedStops = new Set(stopTimes.filter(st=> tripIdsToShow.has(st.trip_id)).map(st => st.stop_id));
     stopsToPlot = stops.filter(s => usedStops.has(s.id));
     
     const usedShapes = new Set();

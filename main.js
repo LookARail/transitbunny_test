@@ -616,7 +616,8 @@ async function filterTrips() {
   const missingTripIds = filteredTrips.filter(tid => !haveTrips.has(String(tid.trip_id)));
 
   if (missingTripIds.length > 0) {
-    showProgressBar();    
+    showProgressBar(); 
+    setProgressBar(0, 'Loading stop times for filtered trips...');   
     const newStopTimes = await requestFilteredStopTimesFromWorker(missingTripIds.map(t => t.trip_id));              
     hideProgressBar();
     stopTimes = stopTimes.concat(newStopTimes);
@@ -1076,8 +1077,7 @@ function changeAnimationSpeed(){
 }
 
 function showProgressBar() {
-  document.getElementById('progressBarContainer').style.display = 'block';
-  setProgressBar(0);
+  document.getElementById('progressBarContainer').style.display = 'block';  
    document.getElementById('uiBlockOverlay').style.display = 'block'; //when loading data, block UI interaction
 
 }
@@ -1086,6 +1086,7 @@ function setProgressBar(percent, mainText) {
     mainText = 'Loading GTFS File';
   }
   document.getElementById('progressBar').style.width = percent + '%';
+  console.log(mainText);
   document.getElementById('progressBarText').textContent = `${mainText}: ${Math.round(percent)}%`;
 }
 function hideProgressBar() {

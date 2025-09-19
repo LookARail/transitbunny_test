@@ -13,6 +13,11 @@ function generateRouteStatsTable(filteredTrips, routes) {
     routeNames[r.route_id] = r.route_long_name || r.route_short_name || r.route_id;
   });
 
+  if (!filteredTrips || filteredTrips.length === 0) {
+    alert("No trips available for the selected filters. Check if routes and service dates have been selected.");  
+    return;  // Stop processing if no trips are available
+  }
+
   // Group trips by route and shape_id
   const stats = {};
   filteredTrips.forEach(trip => {
@@ -172,7 +177,7 @@ function setupCompareServiceDatesFeature() {
     if (serviceDateFilterMode) populateCompareServiceDateFilters();
   };
 
-  document.getElementById('compareServiceDatesBtn')?.addEventListener('click', function() {
+  document.getElementById('compareServiceDatesBtn')?.addEventListener('click', async function() {
     const sel1 = document.getElementById('compareServiceDate1');
     const sel2 = document.getElementById('compareServiceDate2');
     if (!sel1 || !sel2) return;
@@ -184,6 +189,22 @@ function setupCompareServiceDatesFeature() {
     // Get current route type and route name filter selections
     const types = Array.from(document.getElementById('routeTypeSelect').selectedOptions).map(o => o.value);
     const names = Array.from(document.getElementById('routeShortNameSelect').selectedOptions).map(o => o.value);
+
+    // --- Set main service date filter to the two selected dates ---
+    const mainServiceDateSelect = document.getElementById('serviceDateSelect');
+    if (mainServiceDateSelect) {
+      // Deselect all first
+      Array.from(mainServiceDateSelect.options).forEach(opt => opt.selected = false);
+      // Select the two dates
+      Array.from(mainServiceDateSelect.options).forEach(opt => {
+        if (opt.value === val1 || opt.value === val2) opt.selected = true;
+      });
+      // Trigger onchange to run filterTrips
+      mainServiceDateSelect.dispatchEvent(new Event('change'));
+      // Wait for filterTrips to finish (if it's async)
+      if (typeof filterTrips === "function") await filterTrips();
+    }
+
 
     RecomputeMap();
 

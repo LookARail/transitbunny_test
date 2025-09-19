@@ -431,7 +431,7 @@ onmessage = async function (e) {
 
       // Build the index once (first time only)
       if (!STOP_TIMES_TRIP_INDEX || !STOP_TIMES_HEADER_IDX) {
-        postMessage({ type: 'status', message: 'Worker: indexing stop_times.txt (first pass)' });
+        //postMessage({ type: 'status', message: 'Worker: indexing stop_times.txt (first pass)' });
         try {
           buildStopTimesTripIndex(stBytes);
         } catch (err) {
@@ -449,7 +449,7 @@ onmessage = async function (e) {
       }
 
       // Parse only the requested slices
-      postMessage({ type: 'status', message: 'Worker: reading stop_times slices (indexed)' });
+      //postMessage({ type: 'status', message: 'Worker: reading stop_times slices (indexed)' });
       const out = [];
       const onRow = (_tripId, rowObj) => out.push(rowObj);
 

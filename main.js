@@ -760,7 +760,9 @@ function plotFilteredStopsAndShapes(tripsToShow) {
       const polyline = L.polyline(shapePoints, {
         shape_id: shape_id,
         color: color,
-        weight: 2
+        weight: 2,
+        interactive: true,
+        touchTolerance: 12 // increases tap area
       });
       shapesLayer.addLayer(polyline);
     }
@@ -777,7 +779,9 @@ function plotFilteredStopsAndShapes(tripsToShow) {
       const polyline = L.polyline(shapePoints, {
         shape_id: shape_id,
         color: color,
-        weight: 3
+        weight: 3,
+        interactive: true,
+        touchTolerance: 12 // increases tap area
       });
       shapesLayer.addLayer(polyline);
     }

@@ -50,7 +50,7 @@ let speedMultiplier = 10;
 
 let stopsById = new Map();           // stop_id -> {id,name,lat,lon}
 let shapesById = {};                 // shape_id -> [ {lat,lon,sequence,shape_dist_traveled}, ... ]
-let shapesRoute = {};              // shape_id -> corresponding route_color
+let shapesRoute = {};              // shape_id -> corresponding
 let shapeCumulativeDist = {};        // shape_id -> [cumulative distances]
 
 let lastDraggedDepth = 0; // for handling drag events on markers
@@ -762,7 +762,7 @@ function plotFilteredStopsAndShapes(tripsToShow) {
         color: color,
         weight: 2,
         interactive: true,
-        touchTolerance: 50 // increases tap area
+        touchTolerance: 80 // increases tap area
       });
       shapesLayer.addLayer(polyline);
     }
@@ -781,7 +781,7 @@ function plotFilteredStopsAndShapes(tripsToShow) {
         color: color,
         weight: 3,
         interactive: true,
-        touchTolerance: 50 // increases tap area
+        touchTolerance: 80 // increases tap area
       });
       shapesLayer.addLayer(polyline);
     }
@@ -1307,5 +1307,4 @@ window.addEventListener('DOMContentLoaded', () => {
 
   map.createPane('highlightPane');
   map.getPane('highlightPane').style.zIndex = 399; // lower than overlayPane
-
 });

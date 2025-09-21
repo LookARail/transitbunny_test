@@ -669,6 +669,17 @@
   flex-direction: column;
 }
 
+.route-shape-list-header {
+  font-size: 0.9em;
+  color: #444;  
+}
+
+.route-shape-list {
+  font-size: 0.7em;
+  margin: 0;
+  padding-left: 18px;
+}
+
 /* ============== Mobile improvements ============== */
 /* Base touch target & typography improvements for mobile */
 @media (max-width: 900px) {

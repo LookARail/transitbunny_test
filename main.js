@@ -50,6 +50,7 @@ let speedMultiplier = 10;
 
 let stopsById = new Map();           // stop_id -> {id,name,lat,lon}
 let shapesById = {};                 // shape_id -> [ {lat,lon,sequence,shape_dist_traveled}, ... ]
+let shapesRoute = {};              // shape_id -> corresponding route_color
 let shapeCumulativeDist = {};        // shape_id -> [cumulative distances]
 
 let lastDraggedDepth = 0; // for handling drag events on markers
@@ -241,7 +242,7 @@ async function LoadGTFSZipFile(zipFileInput) {
     calendarDates = results.calendar_dates || [];
 
     buildServiceDateDict();
-    initializeTripsRoutes(trips, routes);
+    initializeTripsRoutesShape(trips, routes);
     plotFilteredStopsAndShapes();
 
     setProgressBar(100);
@@ -466,7 +467,7 @@ function updateServiceDateFilterUI() {
 
 
 // === Data Relationships & Filters ===
-function initializeTripsRoutes(tripsArr, routesArr) {
+function initializeTripsRoutesShape(tripsArr, routesArr) {
   shortAndLongNamesByType = {};
 
   const routeMap = new Map(routesArr.map(r=>[r.route_id,r]));
@@ -475,6 +476,17 @@ function initializeTripsRoutes(tripsArr, routesArr) {
   
    // Assign route object to each trip first!
   tripsArr.forEach(t => t.route = routeMap.get(t.route_id));
+
+  // --- Assign route_color to shapes ---
+  if (shapesById) {
+    Object.values(tripsArr).forEach(trip => {
+      const route = routeMap.get(trip.route_id); //asign route
+      if (route)
+      {
+        shapesRoute[trip.shape_id] = route;      
+      }
+    });
+  }
 
   // Build shortNamesByType per route_type
   routesArr.forEach(r => {
@@ -551,7 +563,7 @@ function populateFilters() {
 let filteredTrips1 = [];
 let filteredTrips2 = [];
 
-async function filterTrips() {
+async function filterTrips(useAllServiceDates = false) {
   const types = Array.from(document.getElementById('routeTypeSelect').selectedOptions).map(o => o.value);
   const names = Array.from(document.getElementById('routeShortNameSelect').selectedOptions).map(o => o.value);
   
@@ -577,19 +589,23 @@ async function filterTrips() {
     }
 
     // Filter for each service date
-    if (selectedServiceIdsArr.length > 0) {
+    if (selectedServiceIdsArr.length > 0 || useAllServiceDates) {
       filteredTrips1 = trips.filter(t =>
         types.includes(t.route.route_type) &&
-        names.includes(`${t.route.route_short_name}-${t.route.route_long_name}`) &&
-        selectedServiceIdsArr[0].has(t.service_id)
+        names.includes(`${t.route.route_short_name}-${t.route.route_long_name}`)
       );
+      if(!useAllServiceDates){
+        filteredTrips1 = filteredTrips1.filter(t =>selectedServiceIdsArr[0].has(t.service_id));
+      }
     }
-    if (selectedServiceIdsArr.length > 1) {
+    if (selectedServiceIdsArr.length > 1 || useAllServiceDates) {
       filteredTrips2 = trips.filter(t =>
         types.includes(t.route.route_type) &&
-        names.includes(`${t.route.route_short_name}-${t.route.route_long_name}`) &&
-        selectedServiceIdsArr[1].has(t.service_id)
+        names.includes(`${t.route.route_short_name}-${t.route.route_long_name}`)        
       );
+      if(!useAllServiceDates){
+        filteredTrips2 = filteredTrips2.filter(t =>selectedServiceIdsArr[1].has(t.service_id));
+      }
     }
     
     const tripMap = new Map();
@@ -733,15 +749,38 @@ function plotFilteredStopsAndShapes(tripsToShow) {
     if (!shapesGrouped[s.shape_id]) shapesGrouped[s.shape_id] = [];
     shapesGrouped[s.shape_id].push(s);
   }
+  //draw bus routes (route_type === 3)
   for (const shape_id in shapesGrouped) {
     const shapePoints = shapesGrouped[shape_id]
       .sort((a, b) => a.sequence - b.sequence)
       .map(s => [s.lat, s.lon]);
-    const polyline = L.polyline(shapePoints, {
-      color: 'blue',
-      weight: 2
-    });
-    shapesLayer.addLayer(polyline);
+    const route = shapesRoute[shape_id] ? shapesRoute[shape_id] : null;
+    if (route?.route_type === 3) {
+      const color = route?.route_color ? `#${route.route_color}` : 'blue';
+      const polyline = L.polyline(shapePoints, {
+        shape_id: shape_id,
+        color: color,
+        weight: 2
+      });
+      shapesLayer.addLayer(polyline);
+    }
+  }
+
+  // Then, draw non-bus routes (route_type !== 3) on top
+  for (const shape_id in shapesGrouped) {
+    const shapePoints = shapesGrouped[shape_id]
+      .sort((a, b) => a.sequence - b.sequence)
+      .map(s => [s.lat, s.lon]);
+    const route = shapesRoute[shape_id] ? shapesRoute[shape_id] : null;
+    if (route?.route_type !== 3) {
+      const color = route?.route_color ? `#${route.route_color}` : 'blue';
+      const polyline = L.polyline(shapePoints, {
+        shape_id: shape_id,
+        color: color,
+        weight: 3
+      });
+      shapesLayer.addLayer(polyline);
+    }
   }
 
   stopsLayer.addTo(map);
@@ -757,6 +796,8 @@ function plotFilteredStopsAndShapes(tripsToShow) {
     map.fitBounds(bounds);
   }
 
+  //make the shapes interactable
+  setupShapeHoverInfo();
 }
 
 
@@ -1086,7 +1127,6 @@ function setProgressBar(percent, mainText) {
     mainText = 'Loading GTFS File';
   }
   document.getElementById('progressBar').style.width = percent + '%';
-  console.log(mainText);
   document.getElementById('progressBarText').textContent = `${mainText}: ${Math.round(percent)}%`;
 }
 function hideProgressBar() {
@@ -1125,9 +1165,11 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('stopBtn').addEventListener('click', stopAnimation);
   document.getElementById('speedSelect').addEventListener('change', changeAnimationSpeed);
 
-  document.getElementById('updateMapBtn').addEventListener('click', function() {
+  document.getElementById('updateMapBtn').addEventListener('click', async function() {
     // Use the same logic as at the start of simulation
     stopAnimation();
+    await filterTrips(true); // pass true to use all service dates
+    console.log(`Filtered trips: ${filteredTrips.length}`);
     plotFilteredStopsAndShapes(filteredTrips);
   });
 
@@ -1258,4 +1300,7 @@ window.addEventListener('DOMContentLoaded', () => {
     skipAggregatingStopThreshold = this.checked ? 200 : Infinity; 
     plotFilteredStopsAndShapes(filteredTrips);
   });
+
+  map.createPane('highlightPane');
+  map.getPane('highlightPane').style.zIndex = 399; // lower than overlayPane
 });

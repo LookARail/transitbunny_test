@@ -420,11 +420,11 @@
 .canvas-header {
   background: #0078d7;
   color: #fff;
-  padding: 1px 10px;
+  padding: 0px 10px;
   font-size: 1.1rem;
   font-weight: bold;
-  display: flex;
-  align-items: flex-end;  
+  display: flex;  
+  align-items: center;    /* center text vertically */
   flex: 0 0 auto; /* header stays its natural height */
 }
 
@@ -656,7 +656,18 @@
   background: #005fa3;
 }
 
-
+#shapeInfoCanvas.floating-canvas {
+  right: 32px;
+  top: 80px;
+  min-width: 220px;
+  max-width: 90vw;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.12);
+  border: 1px solid #ddd;
+  display: flex;
+  flex-direction: column;
+}
 
 /* ============== Mobile improvements ============== */
 /* Base touch target & typography improvements for mobile */

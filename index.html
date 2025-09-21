@@ -233,6 +233,15 @@
     <img src="barcode_linkedin_lukeli.jpg" alt="Barcode" style="display:block; margin: 18px auto 0 auto; max-width:220px;">  </div>
 </div>
 
+<!-- Add after other floating canvases -->
+<div id="shapeInfoCanvas" class="floating-canvas" style="display:none; min-width:220px; max-width:90vw; z-index:2500;">
+  <div class="canvas-header" style="background:#0078d7; color:#fff;">
+    Route Info
+    <button class="close-canvas-btn" style="margin-left:auto;">✖</button>
+  </div>
+  <div class="canvas-content" id="shapeInfoContent" style="padding:18px; font-size:1.15em;"></div>
+</div>
+
 <!-- Ribbon/Taskbar at bottom -->
 <div id="ribbonPanel">
   <button class="ribbon-icon" data-canvas="animationCanvas" title="Animation Controls">▶️</button>
@@ -249,6 +258,7 @@
   <script src="libs/papaparse.min.js"></script>
   <script src= "https://cdn.jsdelivr.net/npm/fflate/umd/index.js"></script>
   <script src="analysis.js"></script>
+  <script src="shapePopup.js"></script>
   <script src="main.js"></script>
   <script src="graph.js"></script>
   <script src="locationScore.js"></script>

@@ -762,7 +762,7 @@ function plotFilteredStopsAndShapes(tripsToShow) {
         color: color,
         weight: 2,
         interactive: true,
-        touchTolerance: 12 // increases tap area
+        touchTolerance: 50 // increases tap area
       });
       shapesLayer.addLayer(polyline);
     }
@@ -781,7 +781,7 @@ function plotFilteredStopsAndShapes(tripsToShow) {
         color: color,
         weight: 3,
         interactive: true,
-        touchTolerance: 12 // increases tap area
+        touchTolerance: 50 // increases tap area
       });
       shapesLayer.addLayer(polyline);
     }
@@ -1307,4 +1307,5 @@ window.addEventListener('DOMContentLoaded', () => {
 
   map.createPane('highlightPane');
   map.getPane('highlightPane').style.zIndex = 399; // lower than overlayPane
+
 });

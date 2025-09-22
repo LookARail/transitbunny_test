@@ -115,9 +115,9 @@
       <span id="timeDisplay">00:00:00</span>
     </div>
     <div class="row-buttons">
-      <button id="playBtn">▶️ Play</button>
-      <button id="pauseButton"> ⏯️ Pause</button>
-      <button id="stopBtn">⏹️ Stop</button>
+      <button id="playBtn"> ▶️ <span class="btn-label">Play</span> </button>
+      <button id="pauseButton">⏯️ <span class="btn-label">Pause</span> </button>
+      <button id="stopBtn"> ⏹️ <span class="btn-label">Stop</span></button>
     </div>
   </div>
 </div>
@@ -244,11 +244,26 @@
 
 <!-- Ribbon/Taskbar at bottom -->
 <div id="ribbonPanel">
-  <button class="ribbon-icon" data-canvas="animationCanvas" title="Animation Controls">▶️</button>
-  <button class="ribbon-icon" data-canvas="graphsCanvas" title="Graphs">📈</button>
-  <button class="ribbon-icon" data-canvas="statsCanvas" title="Statistics">📊</button>
-  <button class="ribbon-icon" data-canvas="transitScoreCanvas" title="Transit Accessibility Score">⭐</button>
-  <button class="ribbon-icon" data-canvas="helpCanvas" title="Help">❓</button>
+  <div class="ribbon-btn">
+    <button class="ribbon-icon" data-canvas="animationCanvas" title="Animation Controls">▶️</button>
+    <div class="ribbon-label">Animation Speed</div>
+  </div>
+  <div class="ribbon-btn">
+    <button class="ribbon-icon" data-canvas="graphsCanvas" title="Graphs">📈</button>
+    <div class="ribbon-label">Graphs</div>
+  </div>
+  <div class="ribbon-btn">
+    <button class="ribbon-icon" data-canvas="statsCanvas" title="Statistics">📊</button>
+    <div class="ribbon-label">Statistics</div>
+  </div>
+  <div class="ribbon-btn">
+    <button class="ribbon-icon" data-canvas="transitScoreCanvas" title="Transit Accessibility Score">⭐</button>
+    <div class="ribbon-label">Transit Score</div>
+  </div>
+  <div class="ribbon-btn">
+    <button class="ribbon-icon" data-canvas="helpCanvas" title="Help">❓</button>
+    <div class="ribbon-label">Help</div>
+  </div>
 </div>
 
   <!-- Leaflet JS -->

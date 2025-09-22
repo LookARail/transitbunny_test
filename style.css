@@ -86,8 +86,8 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    margin-top: 8px;
-    margin-bottom: 4px;
+    margin-top: 2px;
+    margin-bottom: 2px;
     }
 
     .row-buttons {
@@ -307,7 +307,56 @@
   --ribbon-gap: 8px; /* space between sheet and ribbon */
 }
 
-/* Ribbon: always fixed at bottom, respect safe area on iPhone */
+
+
+/* Reserve map height so ribbon does not cover map controls or content */
+#map {
+  width: 100vw;
+  height: calc(100vh - (var(--ribbon-height) + env(safe-area-inset-bottom)));
+}
+
+.ribbon-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0 12px;
+  position: relative;
+}
+
+.ribbon-icon {
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 4px 18px rgba(0,120,215,0.18);
+  font-size: 2.3rem;
+  color: #0078d7;
+  border: 3px solid #0078d7;      /* Add blue border */  
+  cursor: pointer;
+  margin-bottom: 0px; /* Pull icon up above ribbon */
+  z-index: 2;
+  position: relative;
+  transition: box-shadow 0.2s, transform 0.1s;
+}
+
+.ribbon-icon.active,
+.ribbon-icon:focus {
+  box-shadow: 0 5px 20px rgba(39, 134, 212, 0.28);
+  background: #e3f2fd;
+  color: #2196ea;
+}
+
+.ribbon-label {
+  font-size: 0.95em;
+  color: #fff;
+  margin-top: 2px;
+  margin-bottom: 5px; 
+  text-align: center;
+  z-index: 1;
+  pointer-events: none;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.18);
+  white-space: nowrap; /* Prevent line breaks */
+}
+
 #ribbonPanel {
   position: fixed;
   left: 0;
@@ -317,38 +366,14 @@
   padding-bottom: env(safe-area-inset-bottom);
   display: flex;
   justify-content: center;
-  align-items: center;
-  gap: 32px;
+  align-items: flex-end;
+  gap: 12px;
   background: rgba(30,34,44,0.97);
   box-shadow: 0 -2px 12px rgba(0,0,0,0.18);
-  z-index: 99999; /* make sure it sits above floating canvases */
+  z-index: 99999;
   pointer-events: auto;
-}
-
-/* Reserve map height so ribbon does not cover map controls or content */
-#map {
-  width: 100vw;
-  height: calc(100vh - (var(--ribbon-height) + env(safe-area-inset-bottom)));
-}
-
-.ribbon-icon {
-  background: none;
-  border: none;
-  font-size: 2rem;
-  color: #fff;
-  opacity: 0.7;
-  cursor: pointer;
-  transition: opacity 0.2s, transform 0.1s;
-}
-
-.ribbon-icon.active{
-  opacity: 1;
-  background: #0078d7;
-  color: #fff;
-  box-shadow: 0 4px 18px rgba(0,120,215,0.25);
-  transform: scale(1.25) translateY(-8px);
-  font-size: 2.7rem;
-  z-index: 10;
+  padding-left: 24px;   /* Add horizontal padding */
+  padding-right: 24px;  /* Add horizontal padding */
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -375,7 +400,7 @@
 #animationCanvas.floating-canvas {
   left: 56px;
   bottom: 80px; /* above the ribbon */
-  width: 380px;
+  width: 360px;
   max-width: 96vw;
   max-height: 38vh;
 }
@@ -683,12 +708,18 @@
 /* ============== Mobile improvements ============== */
 /* Base touch target & typography improvements for mobile */
 @media (max-width: 900px) {
+  .canvas-header {    
+    font-size: 0.9rem;             
+    margin-top: -5px;
+    margin-bottom: -5px;
+  }
+
   /* larger tap targets for all buttons */
   button, .ribbon-icon {
+    font: size 0.7em;
     min-height: unset;
-    padding: 12px 14px;
-    border-radius: 10px;
-    font-size: 1rem;
+    padding: 4px 4px;
+    border-radius: 10px;    
   }
 
   /* hide big logo on small screens to free space */
@@ -764,15 +795,34 @@
 
   #animationCanvas.floating-canvas {
     z-index: 2300;
-    height: 25vh !important; 
+    height: auto !important;     
   }
+
+ #animationCanvas .canvas-content {
+    flex-direction: row !important;
+    align-items: center !important;    
+    justify-content:center !important;    
+    gap: 20px !important;     
+    padding-top: 10px !important; /* Reduce space from header */
+    padding-bottom: 35px !important; /* Reduce space from header */
+  }
+
+  #animationCanvas .row-controls label,
+  #animationCanvas .row-controls select,
+  #animationCanvas .row-controls span {
+    margin-top:4px;
+    align-items: center !important;
+    font-size: 0.85rem;    
+  }
+
+
   #transitScoreCanvas.floating-canvas {
     z-index: 2400;
     height: 40vh !important; 
   }
 
 
-   #graphsCanvas.floating-canvas,
+  #graphsCanvas.floating-canvas,
   #statsCanvas.floating-canvas,
   #helpCanvas.floating-canvas {
     left: 0 !important;
@@ -798,6 +848,14 @@
   .close-canvas-btn {
     padding: 10px;
     margin-right: 8px;
+  }
+
+ #ribbonPanel {
+    gap: 4px !important;
+  }
+
+  .ribbon-label {
+    font-size: 0.70em; /* Smaller font on mobile */
   }
 
   /* keep map visible by giving it bottom padding equal to ribbon + possible open sheet */

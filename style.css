@@ -853,23 +853,26 @@
     flex-direction: row !important;
     align-items: center !important;    
     justify-content:center !important;    
-    gap: 20px !important;     
+    gap: 10px !important;     
     padding-top: 10px !important; /* Reduce space from header */
     padding-bottom: 35px !important; /* Reduce space from header */
   }
 
   #animationCanvas .row-controls label,
   #animationCanvas .row-controls select,
-  #animationCanvas .row-controls span {
-    margin-top:4px;
+  #animationCanvas .row-controls span {    
     align-items: center !important;
     font-size: 0.85rem;    
   }
 
   #animationCanvas .row-buttons button {
-  white-space: nowrap;
+    font-size: 1.1rem !important;  /* much smaller emoji and text */
+    padding-bottom: 2px;
+    white-space: nowrap;
   }
   #animationCanvas .row-buttons .btn-label {
+    font-size: 0.7em !important;   /* smaller text label */
+    padding-bottom: 2px;
     white-space: nowrap;
   }
 

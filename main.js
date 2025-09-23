@@ -1123,8 +1123,7 @@ function changeAnimationSpeed(){
 
 function showProgressBar() {
   document.getElementById('progressBarContainer').style.display = 'block';  
-   document.getElementById('uiBlockOverlay').style.display = 'block'; //when loading data, block UI interaction
-
+  document.getElementById('uiBlockOverlay').style.display = 'block'; //when loading data, block UI interaction
 }
 function setProgressBar(percent, mainText) {
   if (!mainText){
@@ -1152,6 +1151,7 @@ function showTransitScorePopup(msg) {
 
 // === Run on Load ===
 window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('uiBlockOverlay').style.display = 'block'; //when loading for the first time, block UI interaction
   loadGtfsFromWebZip();
   
   document.getElementById('routeTypeSelect');
@@ -1256,7 +1256,9 @@ window.addEventListener('DOMContentLoaded', () => {
   });
 
   // open the first canvas by default
-  document.querySelector('.ribbon-icon[data-canvas="animationCanvas"]').click();
+  if (window.innerWidth > 900) {
+    document.querySelector('.ribbon-icon[data-canvas="animationCanvas"]').click();
+  }
   document.querySelector('.ribbon-icon[data-canvas="helpCanvas"]').click();
 
   // Make some of the canvas draggable

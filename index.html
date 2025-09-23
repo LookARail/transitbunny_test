@@ -11,13 +11,16 @@
 </head>
 <body>
   <div id="map"></div>
-
-  <img id="mainLogo" src="TransitBunnyLogo.png" alt="Logo" />
+  
   <!-- Notification Popup -->
   <div id="transitScorePopup" style="display:none;"></div>
   
   <div id="controls" >
-  <div id="transitbunnylogo" class="main-menu-title">Transit Bunny</div>
+  <div class="main-menu-title-row">
+    <img id="mainLogo" src="TransitBunnyLogo.png" alt="Logo" />
+    <div id="transitbunnylogo" class="main-menu-title">Transit Bunny</div>
+  </div>
+  
   <span id="dataSourceLabel" style="font-size:1.1em; color:#001df5; margin-bottom:-5px; display:block;">
     GTFS Data Source:
   </span>
@@ -44,9 +47,9 @@
           </span>
         </span>
       </label>
+      <select id="routeTypeSelect" multiple size="4" class="filter-select" style="min-width: 120px;"></select>
       <button type="button" id="selectAllRouteType" class="select-all-btn">Select All</button>
     </div>
-    <select id="routeTypeSelect" multiple size="4" style="min-width: 120px;"></select>
 
     <!-- Route Name Filter -->
     <div class="filter-row">
@@ -58,13 +61,13 @@
           </span>
         </span>
       </label>
+      <select id="routeShortNameSelect" multiple size="4" class="filter-select"style="min-width: 120px; max-width: 300px;"></select>
       <button type="button" id="selectAllRouteName" class="select-all-btn">Select All</button>
     </div>
-    <select id="routeShortNameSelect" multiple size="4" style="min-width: 120px; max-width: 300px;"></select>
 
 
     <!-- Service Pattern ID Filter -->
-    <label id="serviceIdLabel">
+    <label id="serviceIdLabel" class="filter-label" style="display:none;">
       <span class="tooltip">
         Service Pattern ID:    
         <span class="tooltiptext">
@@ -74,20 +77,26 @@
       <select id="serviceIdSelect" multiple size="4" style="min-width: 120px;"></select>
     </label>
     <!-- Service-Date Filter (pre-defined, hidden by default) -->
-    <label id="serviceDateLabel" style="display:none;">
-      <span class="tooltip">
-        Service-Date:
-        <span class="tooltiptext">
-          Select a specific date or a generic weekday to filter trips by service availability.
+    
+    <div class="filter-row">            
+      <label id="serviceDateLabel" class="filter-label">
+        <span class="tooltip">
+          Service-Date:
+          <span class="tooltiptext">
+            Select a specific date or a generic weekday to filter trips by service availability.
+          </span>
         </span>
-      </span>
-      <select id="serviceDateSelect" multiple size="4" style="min-width: 120px;"></select>
-    </label>
-    <label class="inline-checkbox">
-      <input type="checkbox" id="aggregateStops" />
-      <span>Cluster Stops?</span>
-    </label>
-    <button id="updateMapBtn" style="margin-top:12px;">Update Map</button>
+      </label>
+      <select id="serviceDateSelect" multiple size="4" class="filter-select" style="min-width: 120px;"></select>
+    </div>
+
+    <div id="updateButtonRow" class="filter-row">
+      <button id="updateMapBtn" style="margin-top:10px;">Update Map</button>
+      <label class="inline-checkbox">
+        <input type="checkbox" id="aggregateStops" />
+        <span>Cluster Stops?</span>
+      </label>
+    </div>
   </div>
 </div>
 
@@ -246,7 +255,7 @@
 <div id="ribbonPanel">
   <div class="ribbon-btn">
     <button class="ribbon-icon" data-canvas="animationCanvas" title="Animation Controls">▶️</button>
-    <div class="ribbon-label">Animation Speed</div>
+    <div class="ribbon-label">Animation</div>
   </div>
   <div class="ribbon-btn">
     <button class="ribbon-icon" data-canvas="graphsCanvas" title="Graphs">📈</button>

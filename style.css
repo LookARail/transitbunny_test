@@ -602,11 +602,19 @@
   color: #ff5252 !important;
 }
 
+
+.main-menu-title-row {  
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
 #mainLogo {
   position: absolute;
-  top: 0px;
-  left: 60px;
-  width: 80px;
+  top: 0px;  
+  width: 80px;  
+  margin-left: -22px;  /* push it further left outside the canvas */
+  margin-top: -45px;
   z-index: 1100;
   pointer-events: none;
 }
@@ -653,32 +661,55 @@
 
 .filter-row {
   display: flex;
-  align-items:flex-start;
-  gap: 0px;
-  margin-bottom: 2px;
-}
-
-.filter-label {
-  flex: 1 1 auto;
-  font-size: 0.98rem;
-  color: #222;
-  display: flex;
+  flex-direction: row;
   align-items: center;
+  gap: 8px;
+  width: 100%;
+  box-sizing: border-box;  
+  flex-wrap: wrap; /* allow the select to drop to a new row */
 }
 
+/* label stays left and doesn't grow */
+.filter-label {
+  flex: 0 0 auto;
+  min-width: 26%;
+  max-width: 40%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+  padding-right: 6px;
+  font-size: 1rem;
+  order: 0; /* first */
+}
+
+/* button appears on same line as the label on desktop */
 .select-all-btn {
-  font-size: 0.95em;
-  padding: 2px 10px;
-  margin-left: 0px;
-  background: linear-gradient(90deg, #0078d7 60%, #00b4d8 100%);
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background 0.2s;
+  flex: 0 0 auto;
+  margin-left: 6px;
+  padding: 8px 10px;
+  font-size: 0.95rem;
+  white-space: nowrap;  
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  order: 1; /* second */
 }
 .select-all-btn:hover {
   background: #005fa3;
+}
+
+/* Select sits below (full width) on desktop */
+.filter-select {
+  flex: 0 0 100%;       /* take full width and drop to new line */
+  width: 100%;
+  box-sizing: border-box;  
+  padding: 8px 10px;
+  border-radius: 8px;
+  order: 2;             /* after label + button */
+  height: auto;         /* allow multiple rows (size attribute will show rows) */
+  max-height: 40vh;     /* prevent runaway height; lets it scroll if many options */
+  overflow-y: auto;
 }
 
 #shapeInfoCanvas.floating-canvas {
@@ -705,6 +736,16 @@
   padding-left: 18px;
 }
 
+#updateMapBtn {
+  width: 60%;  
+}
+
+
+
+
+
+
+
 /* ============== Mobile improvements ============== */
 /* Base touch target & typography improvements for mobile */
 @media (max-width: 900px) {
@@ -722,8 +763,23 @@
     border-radius: 10px;    
   }
 
-  /* hide big logo on small screens to free space */
-  #mainLogo { display: none !important; }
+  #mainLogo {
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
+    margin-right: -18px; /* negative margin to make it extend outside */
+    margin-left: -32px;  /* push it further left outside the canvas */
+    z-index: 1201;
+    position: absolute !important;
+    margin-left: -10px;
+  }
+
+    /* small header style inside bottom-sheet */
+  .main-menu-title {
+    position: relative;
+    font-size: 1.1rem;
+    margin-left: 50px;
+  }
 
   /* make selects and inputs full width for easy tapping */
   #controls select,
@@ -740,15 +796,14 @@
     position: fixed;
     left: 0;
     right: 0;
-    top: auto;            /* remove the desktop top anchor which would be for desktop */
-    /* place controls above the ribbon with a small gap */
+    top: auto;            /* remove the desktop top anchor which would be for desktop */    
     bottom: calc(var(--ribbon-height) + env(safe-area-inset-bottom));
     z-index: 2200 !important;
     margin: 0;
     border-radius: 16px 16px 0 0;
     padding: 12px;
     max-height: 40vh; /* bottom-sheet height */
-    overflow-y: auto;
+    overflow-y: visible;
     background: linear-gradient(#ffffff, #f6f9fb);
     box-shadow: 0 -8px 30px rgba(0,0,0,0.18);
     display: flex;
@@ -756,11 +811,7 @@
     transform: translateZ(0);
   }
 
-  /* small header style inside bottom-sheet */
-  .main-menu-title {
-    font-size: 1.1rem;
-    margin-left: 0;
-  }
+
 
   /* disable resizable behaviour on small screens */
   .resizable-canvas {
@@ -815,6 +866,12 @@
     font-size: 0.85rem;    
   }
 
+  #animationCanvas .row-buttons button {
+  white-space: nowrap;
+  }
+  #animationCanvas .row-buttons .btn-label {
+    white-space: nowrap;
+  }
 
   #transitScoreCanvas.floating-canvas {
     z-index: 2400;
@@ -857,6 +914,48 @@
   .ribbon-label {
     font-size: 0.70em; /* Smaller font on mobile */
   }
+
+
+ .filter-row {
+    flex-wrap: nowrap;      /* force single line */
+    align-items: center;
+    gap: 8px;
+  }
+
+  .filter-label {
+    flex: 0 0 auto;
+    min-width: 26%;        /* tweak if labels are long; reduces label width */
+    max-width: 40%;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    order: 0;               /* label comes first */
+    font-size: 0.95rem;
+  }
+
+  .filter-select {
+    order: 1;               /* put select between label and button */
+    flex: 1 1 auto;         /* grow to fill available space */
+    width: auto !important; /* override earlier width:100% */
+    min-width: 0;           /* allow shrinking in flexbox */
+    margin-top: 0;          /* remove desktop top margin */
+    padding: 8px 10px;    
+    max-height: 44px;
+    overflow-y: auto;       /* enable scrolling inside select (keeps multi-select usable) */
+    max-width: fit-content;
+  }
+
+  .select-all-btn {
+    order: 2;               /* button appears last on the right */
+    flex: 0 0 auto;    
+    flex-wrap: nowrap;      /* force single line */
+    margin-left: 6px;    
+  }
+
+  #updateButtonRow { 
+    margin-bottom: 24px;
+  }
+
 
   /* keep map visible by giving it bottom padding equal to ribbon + possible open sheet */
   #map { height: calc(100vh - (var(--ribbon-height) + env(safe-area-inset-bottom))); }

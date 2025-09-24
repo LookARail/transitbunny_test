@@ -22,7 +22,7 @@
       display: flex;
       flex-direction: column;
       gap: 10px;
-      min-width: 340px;
+      min-width: 340px;      
     }
 
     #controls label,
@@ -802,6 +802,7 @@
     margin: 0;
     border-radius: 16px 16px 0 0;
     padding: 12px;
+    padding-bottom: calc(var(--ribbon-height) + env(safe-area-inset-bottom) + 16px) !important;
     max-height: 40vh; /* bottom-sheet height */
     overflow-y: visible;
     background: linear-gradient(#ffffff, #f6f9fb);
@@ -853,7 +854,7 @@
     flex-direction: row !important;
     align-items: center !important;    
     justify-content:center !important;    
-    gap: 10px !important;     
+    gap: 20px !important;     
     padding-top: 10px !important; /* Reduce space from header */
     padding-bottom: 35px !important; /* Reduce space from header */
   }
@@ -862,7 +863,9 @@
   #animationCanvas .row-controls select,
   #animationCanvas .row-controls span {    
     align-items: center !important;
-    font-size: 0.85rem;    
+    vertical-align: middle !important;
+    margin-bottom: 0 !important;
+    font-size: 0.90rem;    
   }
 
   #animationCanvas .row-buttons button {
@@ -872,6 +875,7 @@
   }
   #animationCanvas .row-buttons .btn-label {
     font-size: 0.7em !important;   /* smaller text label */
+    display: none !important;
     padding-bottom: 2px;
     white-space: nowrap;
   }

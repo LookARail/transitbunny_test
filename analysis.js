@@ -335,7 +335,7 @@ function setupCompareServiceDatesFeature() {
         <th>Avg Trip Time (min)<br>(${sel2.options[sel2.selectedIndex].text})</th>
       </tr>
     `;
-    const html = `<table style="width:100%; font-size:0.95em;">
+    const html = `<table>">
       <thead>${th}</thead>
       <tbody>
         ${rows.map(r => `<tr>${r.map(cell => `<td>${cell||''}</td>`).join('')}</tr>`).join('')}

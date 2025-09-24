@@ -67,12 +67,7 @@
       transform: translateY(-2px) scale(1.03);
     }
 
-    #uploadGtfsBtn {
-      background: linear-gradient(90deg, #43cea2 0%, #185a9d 100%);
-    }
-    #uploadGtfsBtn:hover {
-      background: linear-gradient(90deg, #185a9d 0%, #43cea2 100%);
-    }
+
 
     #timeDisplay {
       font-size: 1.15rem;
@@ -158,20 +153,26 @@
   gap: 8px;
 }
 
+.gtfs-source-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;  
+}
+
 #uploadGtfsBtn {
-  background: #0078d7;
+  background: linear-gradient(90deg, #24b0ec 0%, #185a9d 100%);
   color: #fff;
   border: none;
   border-radius: 8px;
-  padding: 10px 18px;
   font-size: 1rem;
   font-weight: 500;
   cursor: pointer;
   transition: background 0.2s;
 }
 #uploadGtfsBtn:hover {
-  background: #005fa3;
+  background: linear-gradient(90deg, #24b0ec 0%, #3485e2 100%);
 }
+
 
 #progressBarContainer {
   position: fixed;
@@ -260,7 +261,7 @@
   margin-right: 300px;
 }
 
-#routeStatsTable, #compareServiceDatesTable table {
+#routeStatsTable table, #compareServiceDatesTable table {
   width: 100%;  
   border-collapse: collapse;
   font-size: 0.78rem;
@@ -270,11 +271,20 @@
   box-shadow: 0 1px 6px rgba(0,0,0,0.07);
 }
 
+
+#routeStatsTable table {
+  min-width: 700px;
+}
+
+
+
 #routeStatsTable th, #routeStatsTable td, #compareServiceDatesTable th, #compareServiceDatesTable td {
   padding: 8px 12px;
+  text-wrap: balance;
   text-align: center;
   border-bottom: 1px solid #e3e8ee;
-  border-right: 1px solid #e3e8ee;   /* Add this line for vertical borders */
+  border-right: 1px solid #e3e8ee;   
+  min-width: 70px;
 }
 
 #routeStatsTable th, #compareServiceDatesTable th {
@@ -296,7 +306,6 @@
 #GenerateStat {
   margin-bottom: 10px;
   margin-top: 0;
-  width: 90%;
   max-width: 320px;
   font-size: 1rem;
   border-radius: 8px;
@@ -764,6 +773,13 @@
     margin-bottom: -5px;
   }
 
+
+  .canvas-header .tab-btn {
+    white-space: nowrap;
+    font-size: clamp(0.8rem, 2.5vw, 1rem);
+  }
+
+
   /* larger tap targets for all buttons */
   button, .ribbon-icon {
     font: size 0.7em;
@@ -898,9 +914,7 @@
   }
 
 
-  #graphsCanvas.floating-canvas,
-  #statsCanvas.floating-canvas,
-  #helpCanvas.floating-canvas {
+  #helpCanvas.floating-canvas{
     left: 0 !important;
     right: 0 !important;
     width: 100vw !important;
@@ -918,6 +932,28 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
+  }
+
+   #graphsCanvas.floating-canvas,
+  #statsCanvas.floating-canvas {
+    left: 0 !important;
+    right: 0 !important;
+    width: 100vw !important;
+    min-width: 0 !important;
+    max-width: 100vw !important;
+    bottom: calc(var(--ribbon-height) + env(safe-area-inset-bottom)) !important;
+    top: auto !important;
+    height: 50vh !important;         /* bottom half of the screen */
+    max-height: 50vh !important;
+    border-radius: 16px 16px 0 0;
+    z-index: 2400;
+    margin: 0;
+    padding: 0;
+    box-shadow: 0 -8px 30px rgba(0,0,0,0.18);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transform: translateZ(0);
   }
 
   /* bigger close button touch target */

@@ -21,12 +21,14 @@
     <div id="transitbunnylogo" class="main-menu-title">Transit Bunny</div>
   </div>
   
-  <span id="dataSourceLabel" style="font-size:1.1em; color:#001df5; margin-bottom:-5px; display:block;">
-    GTFS Data Source:
-  </span>
-  <span id="dataSourceText" style="font-size:0.98em; color:#0078d7; margin-bottom:0px; display:block;">
-    Default - Vancouver GTFS Data 2025-08-08
-  </span>
+  <div class="gtfs-source-row">
+    <span id="dataSourceLabel" style="font-size:1.1em; color:#001df5; margin-bottom:-5px;">
+      GTFS Source:
+    </span>
+    <span id="dataSourceText" style="font-size:0.98em; color:#0078d7; margin-bottom:0px; margin-left:8px;">
+      Default - Vancouver 2025-08-08
+    </span>
+  </div>
   <div class="main-menu-upload">
     <button id="uploadGtfsBtn"><span style="font-size:1.2em;">📁</span> Load My Own GTFS ZIP</button>
     <input type="file" id="gtfsFileInput" accept=".zip" style="display:none" />

@@ -746,6 +746,15 @@
 
 
 
+
+
+
+
+
+
+
+
+
 /* ============== Mobile improvements ============== */
 /* Base touch target & typography improvements for mobile */
 @media (max-width: 900px) {
@@ -802,7 +811,7 @@
     margin: 0;
     border-radius: 16px 16px 0 0;
     padding: 12px;
-    padding-bottom: calc(var(--ribbon-height) + env(safe-area-inset-bottom) + 16px) !important;
+    padding-bottom: calc(var(--ribbon-height) + env(safe-area-inset-bottom)) !important;
     max-height: 40vh; /* bottom-sheet height */
     overflow-y: visible;
     background: linear-gradient(#ffffff, #f6f9fb);
@@ -865,13 +874,16 @@
     align-items: center !important;
     vertical-align: middle !important;
     margin-bottom: 0 !important;
-    font-size: 0.90rem;    
+    font-size: 1.0rem;    
   }
 
   #animationCanvas .row-buttons button {
-    font-size: 1.1rem !important;  /* much smaller emoji and text */
+    font-size: 1.9rem !important;  /* much smaller emoji and text */
     padding-bottom: 2px;
     white-space: nowrap;
+    background: none !important;
+    box-shadow: none !important;
+    border: none !important;
   }
   #animationCanvas .row-buttons .btn-label {
     font-size: 0.7em !important;   /* smaller text label */

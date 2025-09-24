@@ -31,11 +31,11 @@ function initTripPlot() {
     type: 'line',
     data: tripPlotData,
     options: {      
-      responsive: true,      
+      responsive: true,
       animation: false,
       scales: {
         x: {
-          type: 'linear', 
+          type: 'linear',           
           title: { display: true, text: 'Time (HH:MM)' },
           ticks: {
             autoSkip: false,
@@ -556,4 +556,6 @@ function updateHeadwayPlotForHour(hour) {
     annotationDiv.style.display = annotationText ? 'block' : 'none';    
   }
 }
+
+
 //#endregion

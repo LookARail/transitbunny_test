@@ -827,7 +827,7 @@
     margin: 0;
     border-radius: 16px 16px 0 0;
     padding: 12px;
-    padding-bottom: calc(var(--ribbon-height) + env(safe-area-inset-bottom)) !important;
+    padding-bottom: calc(var(--ribbon-height) + env(safe-area-inset-bottom) - 10px) !important;
     max-height: 40vh; /* bottom-sheet height */
     overflow-y: visible;
     background: linear-gradient(#ffffff, #f6f9fb);
@@ -872,7 +872,7 @@
   }
 
   #animationCanvas.floating-canvas {
-    z-index: 2300;
+    z-index: 2450;
     height: auto !important;     
   }
 
@@ -935,16 +935,17 @@
     flex-direction: column;
   }
 
-   #graphsCanvas.floating-canvas,
-  #statsCanvas.floating-canvas {
+  #graphsCanvas.floating-canvas,  #statsCanvas.floating-canvas {
     left: 0 !important;
     right: 0 !important;
     width: 100vw !important;
     min-width: 0 !important;
     max-width: 100vw !important;
+    min-height: 35vh !important;
     bottom: calc(var(--ribbon-height) + env(safe-area-inset-bottom)) !important;
-    top: auto !important;
-    height: 50vh !important;         /* bottom half of the screen */
+    padding-bottom: calc(var(--ribbon-height) + env(safe-area-inset-bottom) - 10px) !important;
+    top: auto !important;    
+    height:auto !important;
     max-height: 50vh !important;
     border-radius: 16px 16px 0 0;
     z-index: 2400;
@@ -954,8 +955,10 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    transform: translateZ(0);
+    justify-content: flex-end; /* push content to the bottom */
+    transform: translateZ(0);  
   }
+
 
   /* bigger close button touch target */
   .close-canvas-btn {

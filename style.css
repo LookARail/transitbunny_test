@@ -834,6 +834,7 @@
     box-shadow: 0 -8px 30px rgba(0,0,0,0.18);
     display: flex;
     flex-direction: column;
+    justify-content: flex-end; /* push content to the bottom */
     transform: translateZ(0);
   }
 
@@ -1006,11 +1007,6 @@
     flex-wrap: nowrap;      /* force single line */
     margin-left: 6px;    
   }
-
-  #updateButtonRow { 
-    margin-bottom: 24px;
-  }
-
 
   /* keep map visible by giving it bottom padding equal to ribbon + possible open sheet */
   #map { height: calc(100vh - (var(--ribbon-height) + env(safe-area-inset-bottom))); }

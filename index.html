@@ -150,11 +150,11 @@
     </div>
     <!-- trips per hour plot -->
     <div id="tripsPerHourTab" class="tab-content">
-      <div id="tripsPerHourAnnotation" style="color: #b00; font-size: 0.85em; margin-bottom: 4px; display:none"></div>
+      <div id="tripsPerHourAnnotation" style="color: #b00; display:none"></div>
       <canvas id="tripsPerHourPlot"></canvas>
     </div>
   </div>
-  <div class="resizer"></div>
+  <div id = "graphResizer" class="resizer"></div>
 </div>
 
 <!-- Statistics Canvas with Tabs -->
@@ -201,13 +201,12 @@
     Transit Accessibility Score
     <button class="close-canvas-btn" style="margin-left:auto; background:none; border:none; color:#fff; font-size:1.3em; cursor:pointer;">✖</button>
   </div>
-  <div class="canvas-content" style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%;">
-    <div id="transitScoreValue" style="font-size:3.2em; font-weight:bold; color:#185a9d; margin: 24px 0 12px 0; transition: color 0.3s;">
-      <span style="font-size:1.2em; color:#aaa;">Click a location on the map</span>
+  <div class="canvas-content" style="display:flex; flex-direction:column; align-items:center; justify-content:top; height:100%;">
+    <div id="transitScoreValue" >
+      <span style="color:#aaa;">Click a location on the map</span>
     </div>
-    <div id="transitScoreSub" style="font-size:1.1em; color:#555; margin-bottom: 10px;">
-      <span style="color:#43cea2;">&#9679;</span> The score reflects how easy it is to access frequent transit from this spot.<br>
-      <span style="font-size:0.95em; color:#888;">(100 = best, 0 = worst)</span>
+    <div id="transitScoreSub" style="color:#555; margin-bottom: 10px;">
+      <span style="color:#43cea2;"></span> The score reflects how easy it is to access frequent transit from this spot. This feature was made for fun and there's no research-proven formula behind it! The scoring considers distance to services, number of routes, and service frequency<br>
     </div>
   </div>
 </div>
@@ -281,6 +280,7 @@
 
   <!-- Your main GTFS JS -->
   <script src="libs/chart.js"></script>
+  <script src="libs/chartjs-plugin-zoom.js"></script>
   <script src="libs/papaparse.min.js"></script>
   <script src= "https://cdn.jsdelivr.net/npm/fflate/umd/index.js"></script>
   <script src="analysis.js"></script>

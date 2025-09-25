@@ -25,6 +25,8 @@ let tripPlotData = {
   ]
 };
 
+
+
 function initTripPlot() {
   const ctx = document.getElementById('tripPlot').getContext('2d');
   tripPlotChart = new Chart(ctx, {
@@ -32,6 +34,7 @@ function initTripPlot() {
     data: tripPlotData,
     options: {      
       responsive: true,
+      aspectRatio: 16 / 10,       
       animation: false,
       scales: {
         x: {
@@ -62,16 +65,34 @@ function initTripPlot() {
         legend: { display: true, position: 'bottom' },
         title: { text: 'Number of Vehicles', display: true, font: { size: 14 } },
         tooltip: {
-        callbacks: {
-          title: function(context) {
-            // context[0].parsed.x is the x value in seconds
-            const value = context[0].parsed.x;
-            const h = Math.floor(value / 3600).toString().padStart(2, '0');
-            const m = Math.floor((value % 3600) / 60).toString().padStart(2, '0');
-            return `${h}:${m}`;
+          callbacks: {
+            title: function(context) {
+              // context[0].parsed.x is the x value in seconds
+              const value = context[0].parsed.x;
+              const h = Math.floor(value / 3600).toString().padStart(2, '0');
+              const m = Math.floor((value % 3600) / 60).toString().padStart(2, '0');
+              return `${h}:${m}`;
+            }
+          }        
+        },
+        zoom: {
+          pan: {
+            enabled: true,
+            mode: 'y'
+          },
+          zoom: {
+            wheel: {
+              enabled: true, // Enable zooming with mouse wheel
+            },
+            pinch: {
+              enabled: true // Enable zooming with pinch gesture on mobile
+            },
+            mode: 'y'
+          },
+          limits: {
+            y: { min: 0 }
           }
-        }
-      }
+        }        
       }
     }
   });
@@ -150,6 +171,7 @@ function setupVehKmPlot() {
       plugins: {
         legend: {
           display: true,
+          aspectRatio: 16 / 10, 
           position: 'top',
           labels: { color: '#222', font: { weight: 'bold' } }
         },
@@ -157,6 +179,24 @@ function setupVehKmPlot() {
           display: true,
           text: 'Cumulative Vehicle-Kilometers by Route',
           font: { size: 14 }
+        },
+        zoom: {
+          pan: {
+            enabled: true,
+            mode: 'y'
+          },
+          zoom: {
+            wheel: {
+              enabled: true, // Enable zooming with mouse wheel
+            },
+            pinch: {
+              enabled: true // Enable zooming with pinch gesture on mobile
+            },
+            mode: 'y'
+          },
+          limits: {
+            y: { min: 0 } // <-- Prevent zoom/pan below 0
+          }
         }
       },
       scales: {
@@ -340,13 +380,32 @@ function setupTripsPerHourPlot() {
         legend: {
           display: true,
           position: 'top',
+          aspectRatio: 16 / 10, 
           labels: { color: '#222', font: { weight: 'bold' } }
         },
         title: {
           display: true,
           text: 'Estimated Headway (mm:ss) by Route',
           font: { size: 14 }
-        }
+        },
+        zoom: {
+          pan: {
+            enabled: true,
+            mode: 'y'
+          },
+          zoom: {
+            wheel: {
+              enabled: true, // Enable zooming with mouse wheel
+            },
+            pinch: {
+              enabled: true // Enable zooming with pinch gesture on mobile
+            },
+            mode: 'y'
+          },
+          limits: {
+            y: { min: 0 }
+          }
+        }        
       },
       scales: {
         x: {
@@ -375,6 +434,7 @@ function setupTripsPerHourPlot() {
       }
     }
   });
+
 }
 
 function updateHeadwayPlotForHour(hour) {

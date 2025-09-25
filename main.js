@@ -1149,6 +1149,34 @@ function showTransitScorePopup(msg) {
   }, 3000);
 }
 
+function updateLegendFontSizeForMobile() {
+  const isMobile = window.innerWidth <= 900;
+  const titleFontSize = isMobile ? 9 : 16; // or your preferred 
+  const legendFontSize = isMobile ? 9 : 14; // or your preferred sizes
+
+  let _tripPlotChart = document.getElementById('tripPlot')?.chart;
+  let _vehKmChart = document.getElementById('vehKmPlot')?.chart;
+  let _tripsPerHourChart = document.getElementById('tripsPerHourPlot')?.chart;
+  if (_tripPlotChart) {
+    _tripPlotChart.options.plugins.legend.labels.font.size = legendFontSize;
+    _tripPlotChart.options.plugins.title.font.size = titleFontSize;
+    _tripPlotChart.update();
+  }
+  if (_vehKmChart) {
+    _vehKmChart.options.plugins.legend.labels.font.size = legendFontSize;
+    _vehKmChart.options.plugins.title.font.size = titleFontSize;
+    _vehKmChart.update();
+  }
+  if (_tripsPerHourChart) {
+    _tripsPerHourChart.options.plugins.legend.labels.font.size = legendFontSize;
+    _tripsPerHourChart.options.plugins.title.font.size = titleFontSize;
+    _tripsPerHourChart.update();
+  }
+}
+
+
+window.addEventListener('resize', updateLegendFontSizeForMobile);
+
 // === Run on Load ===
 window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('uiBlockOverlay').style.display = 'block'; //when loading for the first time, block UI interaction
@@ -1187,6 +1215,7 @@ window.addEventListener('DOMContentLoaded', () => {
   initTripPlot();
   setupVehKmPlot();
   setupTripsPerHourPlot();
+  updateLegendFontSizeForMobile();
   setupTransitScoreMapClickHandler();
 
   // Ribbon icon toggle logic (not mutually exclusive)
@@ -1207,6 +1236,23 @@ window.addEventListener('DOMContentLoaded', () => {
         this.classList.add('active');
         if (canvas) canvas.style.display = 'flex';
       }
+
+      if (window.innerWidth <= 900) {
+        // List of mutually exclusive canvases
+        const exclusiveCanvases = ['graphsCanvas', 'statsCanvas', 'transitScoreCanvas'];
+          if(exclusiveCanvases.includes(canvasId)) {
+          exclusiveCanvases.forEach(id => {
+            if (id !== canvasId) {
+              const otherCanvas = document.getElementById(id);
+              if (otherCanvas && otherCanvas.style.display !== 'none') {
+                otherCanvas.style.display = 'none';
+                document.querySelectorAll(`.ribbon-icon[data-canvas="${id}"]`).forEach(icon => icon.classList.remove('active'));
+              }
+            }
+          });
+        }
+      }
+
     });
   });
 

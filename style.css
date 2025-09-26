@@ -22,7 +22,7 @@
       display: flex;
       flex-direction: column;
       gap: 10px;
-      min-width: 340px;      
+      max-width: 400px;  
     }
 
     #controls label,
@@ -658,7 +658,7 @@
   bottom: 40px;
   transform: translateX(-50%);
   min-width: 220px;
-  max-width: 90vw;
+  max-width: 200vw;
   background: #185a9d;
   color: #fff;
   padding: 14px 28px;
@@ -771,9 +771,8 @@
 
 
 
-/* ============== Mobile improvements ============== */
-/* Base touch target & typography improvements for mobile */
-@media (max-width: 900px) {
+/* ============== Mobile  ============== */
+@media (max-width: 900px) and (orientation: portrait){
   .canvas-header {    
     font-size: 0.9rem;             
     margin-top: -5px;
@@ -788,8 +787,8 @@
 
 
   /* larger tap targets for all buttons */
-  button, .ribbon-icon {
-    font: size 0.7em;
+  .ribbon-icon {
+    font-size: 1.55em;
     min-height: unset;
     padding: 4px 4px;
     border-radius: 10px;    
@@ -836,6 +835,7 @@
     padding: 12px;
     padding-bottom: calc(var(--ribbon-height) + env(safe-area-inset-bottom) - 10px) !important;
     max-height: 50vh; /* bottom-sheet height */
+    max-width: 600px;
     overflow-y: visible;
     background: linear-gradient(#ffffff, #f6f9fb);
     box-shadow: 0 -8px 30px rgba(0,0,0,0.18);
@@ -889,9 +889,9 @@
     flex-direction: row !important;
     align-items: center !important;    
     justify-content:center !important;    
-    gap: 20px !important;     
+    gap: 12px !important;     
     padding-top: 10px !important; /* Reduce space from header */
-    padding-bottom: 35px !important; /* Reduce space from header */
+    padding-bottom: 25px !important; /* Reduce space from header */
   }
 
   #animationCanvas .row-controls label,
@@ -1014,7 +1014,8 @@
     margin-right: 8px;
   }
 
- #ribbonPanel {
+  #ribbonPanel {
+    max-height: 55px;
     gap: 4px !important;
   }
 
@@ -1067,6 +1068,365 @@
   /* keep map visible by giving it bottom padding equal to ribbon + possible open sheet */
   #map { height: calc(100vh - (var(--ribbon-height) + env(safe-area-inset-bottom))); }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* ============== Mobile Landscape ============== */
+@media (max-width: 900px) and (orientation: landscape) {
+  .canvas-header {    
+    font-size: 0.8rem;             
+    margin-top: -5px;
+    margin-bottom: -5px;
+  }
+
+  .canvas-header .tab-btn {
+    white-space: nowrap;
+    font-size: clamp(0.8rem, 2.5vw, 1rem);
+  }
+
+  /* larger tap targets for all buttons */
+  .ribbon-icon {
+    font-size:  0.85rem!important;
+    padding: 4px 4px;
+    border-radius: 10px;    
+  }
+
+  #mainLogo {
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
+    margin-right: -18px; 
+    margin-left: -32px;  
+    z-index: 1201;
+    position: absolute !important;
+    margin-left: -10px;
+  }
+
+  /* small header style inside left-sheet (was bottom-sheet in portrait) */
+  .main-menu-title {
+    position: relative;
+    font-size: 1.1rem;
+    margin-left: 50px;
+  }
+
+  
+  #controls select,
+  #controls input[type="text"],
+  #controls input[type="file"],
+  .main-menu-filters select {
+    width: 100%;
+    box-sizing: border-box;
+    font-size: 1rem;
+  }
+
+  #controls {
+    position: fixed;
+    left: 0;                /* keep controls accessible on left (like a left-sheet) */
+    top: 0;
+    width: auto;
+    max-width: 350px;
+    z-index: 2200 !important;
+    margin: 0;
+    border-radius: 0 16px 16px 0; 
+    padding: 12px;
+    max-height: 100vh; 
+    overflow-y: auto;
+    background: linear-gradient(#ffffff, #f6f9fb);
+    box-shadow: 8px 0 30px rgba(0,0,0,0.18); 
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end; 
+    transform: translateZ(0);
+  }
+
+  /* disable resizable behaviour on small screens */
+  .resizable-canvas {
+    resize: none !important;
+    min-width: unset;
+    width: 48vw !important; /* changed: occupy left ~half in landscape */
+  }
+
+  #updateButtonRow{
+    margin-bottom: 60px;        
+  }
+
+  /* Hide the resizer grip on mobile */
+  .resizer { display: none !important; }
+
+  /* Animation and Transit Score canvases: occupy left half-ish in landscape */
+  #animationCanvas.floating-canvas,
+  #transitScoreCanvas.floating-canvas {
+    /* changed from full-width bottom to left-column */
+    left: 0 !important;    
+    bottom: 0 !important;
+    width: 48vw !important;          /* occupy left ~half */
+    min-width: 0 !important;
+    max-width: 400px !important;
+    min-height: 80vh !important; /* ensure minimum height */
+    border-radius: 0 16px 16px 0;   
+    margin: 0;
+    padding: 0;
+    box-shadow: 8px 0 30px rgba(0,0,0,0.18); /* shadow to the right */
+    display: flex;
+    flex-direction: column;
+    transform: translateZ(0);
+    margin-bottom: 35px;
+  }
+
+  #animationCanvas.floating-canvas {
+    z-index: 2450;
+  }
+
+  /* adjust internal layout to vertical stack in a narrow left column */
+  #animationCanvas .canvas-content {
+    flex-direction: column !important;     /* changed: column to suit tall left column */
+    align-items: stretch !important;    
+    justify-content: flex-start !important;    
+    gap: 10px !important;     
+    padding-top: 6px !important;
+    padding-bottom: 2px !important;    
+  }
+
+  #animationCanvas .row-controls label,
+  #animationCanvas .row-controls select,
+  #animationCanvas .row-controls span {    
+    align-items: center !important;
+    vertical-align: middle !important;
+    font-size: 1.0rem;        
+  }
+
+  #animationCanvas .row-controls {
+    margin-top: 10px !important;
+    margin-bottom: 0 !important;
+    gap: 6px !important; /* reduce gap between controls */
+  }
+
+
+  #animationCanvas .row-buttons .btn-label {
+    font-size: 0.9em !important;
+  }
+
+  #transitScoreCanvas.floating-canvas {
+    z-index: 2400;
+    height: 100vh !important; /* changed to full height to match left column */
+  }
+
+  #transitScoreCanvas .canvas-content {
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+  }
+
+  #transitScoreValue {
+    font-size: 2em !important;
+    font-weight: bold;    
+    color: #185a9d;
+    align-items: center;
+    margin: 6px 0 6px 0 !important;
+    transition: color 0.3s;
+  } 
+
+  #transitScoreSub{
+    font-size: 0.9rem !important;
+    margin-top: -6px;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+  }
+
+  /* Help canvas moves to left column and becomes tall instead of bottom sheet */
+  #helpCanvas.floating-canvas{
+    left: 0 !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    width: 48vw !important;           /* changed: left-half */
+    height: 100vh !important;
+    max-height: 100vh !important;
+    border-radius: 0 16px 16px 0;
+    z-index: 2400;
+    margin: 0;
+    padding: 0;
+    box-shadow: 8px 0 30px rgba(0,0,0,0.18);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    border: #0000001a 2px solid !important;
+  }
+
+  #helpCanvas .canvas-content {
+    background: #ddf4d8 !important;    
+  }
+
+  #helpCanvas .canvas-content,
+  #helpCanvas .canvas-content h3,
+  #helpCanvas .canvas-content h4,
+  #helpCanvas .canvas-content ul,
+  #helpCanvas .canvas-content li {
+    font-size: 0.85rem !important;
+  }
+  #helpCanvas .canvas-content ul,
+  #helpCanvas .canvas-content ul li {
+    padding-left: 0 !important;
+    margin-left: 10px !important;     
+  }
+
+  /* Graphs and stats move to left column too */
+  #graphsCanvas.floating-canvas,  #statsCanvas.floating-canvas {
+    left: 0 !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    width: 48vw !important;        /* changed: left half */
+    min-width: 0 !important;
+    max-width: 48vw !important;
+    min-height: 100vh !important;
+    height: 100vh !important;
+    padding-bottom: 0 !important;
+    border-radius: 0 16px 16px 0;
+    z-index: 2400;
+    margin: 0;
+    padding: 0;
+    box-shadow: 8px 0 30px rgba(0,0,0,0.18);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    transform: translateZ(0);  
+  }
+
+  #graphsCanvas .canvas-header .tab-btn[data-tab] {
+    font-size: 0.75rem !important;
+    padding: 6px 12px !important;
+  }
+
+  #statsCanvas .canvas-header .tab-btn[data-tab] {
+    font-size: 0.75rem !important;
+    padding: 6px 12px !important;
+  }
+
+  #statsCanvas .canvas-content button,
+  #statsCanvas .tab-content button {
+    font-size: 0.75rem !important;
+    padding: 6px 12px !important;
+    margin: 2px 4px 2px 0 !important;
+  }
+
+
+  /* bigger close button touch target */
+  .close-canvas-btn {
+    padding: 10px;
+    margin-right: 8px;
+  }
+
+  #ribbonPanel {
+    gap: 4px !important;
+    max-height: 30px;
+    flex-direction: row;
+    justify-content: flex-end;
+  }
+
+
+  .ribbon-label {
+    font-size: 0.60em;
+  }
+
+  .filter-row {
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .filter-label {
+    flex: 0 0 auto;
+    min-width: 26%;
+    max-width: 40%;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    order: 0;
+    font-size: 0.95rem;
+  }
+
+  .filter-select {
+    order: 1;
+    flex: 1 1 auto;
+    width: auto !important;
+    min-width: 0;
+    margin-top: 0;
+    padding: 8px 10px;    
+    max-height: 44px;
+    overflow-y: auto;
+    max-width: fit-content;
+  }
+
+  .select-all-btn {
+    order: 2;
+    flex: 0 0 auto;    
+    flex-wrap: nowrap;
+    margin-left: 6px;    
+  }
+
+  #tripsPerHourAnnotation {
+    font-size: 0.7rem !important;
+  }
+
+  /* keep map visible by giving it left padding equal to the left-sheet width (approximately) */
+  /* changed: in portrait we reduce height to leave space for bottom sheet; in landscape we shift main area to the right */
+  #map {
+    height: 100vh;
+    margin-left: 48vw; /* push map to the right of the left-column canvases */
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /* Improve scrolling performance on mobile */
 html, body, #controls, .canvas-content {

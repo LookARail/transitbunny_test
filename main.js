@@ -1151,26 +1151,24 @@ function showTransitScorePopup(msg) {
 
 function updateLegendFontSizeForMobile() {
   const isMobile = window.innerWidth <= 900;
-  const titleFontSize = isMobile ? 9 : 16; // or your preferred 
-  const legendFontSize = isMobile ? 9 : 14; // or your preferred sizes
+  const titleFontSize = isMobile ? 9 : 16; 
+  const legendFontSize = isMobile ? 9 : 14;
 
-  let _tripPlotChart = document.getElementById('tripPlot')?.chart;
-  let _vehKmChart = document.getElementById('vehKmPlot')?.chart;
-  let _tripsPerHourChart = document.getElementById('tripsPerHourPlot')?.chart;
-  if (_tripPlotChart) {
-    _tripPlotChart.options.plugins.legend.labels.font.size = legendFontSize;
-    _tripPlotChart.options.plugins.title.font.size = titleFontSize;
-    _tripPlotChart.update();
+  if (tripPlotChart) {
+    tripPlotChart.options.plugins.size = legendFontSize;
+    tripPlotChart.options.plugins.title.font.size = titleFontSize;
+    tripPlotChart.update();
   }
-  if (_vehKmChart) {
-    _vehKmChart.options.plugins.legend.labels.font.size = legendFontSize;
-    _vehKmChart.options.plugins.title.font.size = titleFontSize;
-    _vehKmChart.update();
+  if (vehKmChart) {
+    vehKmChart.options.plugins.legend.labels.font.size = legendFontSize;
+    vehKmChart.options.plugins.title.font.size = titleFontSize;
+    vehKmChart.update();
   }
-  if (_tripsPerHourChart) {
-    _tripsPerHourChart.options.plugins.legend.labels.font.size = legendFontSize;
-    _tripsPerHourChart.options.plugins.title.font.size = titleFontSize;
-    _tripsPerHourChart.update();
+  if (tripsPerHourChart) {
+    tripsPerHourChart.options.plugins.legend.labels.font.size = legendFontSize;
+    tripsPerHourChart.options.plugins.title.font.size = titleFontSize;
+    tripsPerHourChart.update();
+    console.log(`Updated legend font size for mobile: ${legendFontSize}`);
   }
 }
 

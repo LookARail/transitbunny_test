@@ -3,11 +3,9 @@ let tripStopsMap_analysis = {};
 let stopIdToName = {};
 
 function generateRouteStatsTable(filteredTrips, routes) {
-  // Map shape_id to its shape points
 
   RecomputeMap();
 
-  // Map route_id to route_name
   const routeNames = {};
   routes.forEach(r => {
     routeNames[r.route_id] = r.route_long_name || r.route_short_name || r.route_id;
@@ -15,10 +13,9 @@ function generateRouteStatsTable(filteredTrips, routes) {
 
   if (!filteredTrips || filteredTrips.length === 0) {
     alert("No trips available for the selected filters. Check if routes and service dates have been selected.");  
-    return;  // Stop processing if no trips are available
+    return; 
   }
 
-  // Group trips by route and shape_id
   const stats = {};
   filteredTrips.forEach(trip => {
     const routeName = routeNames[trip.route_id];
@@ -27,11 +24,9 @@ function generateRouteStatsTable(filteredTrips, routes) {
     stats[routeName][trip.shape_id].push(trip);
   });
 
-  // Build table rows
   const rows = [];
   Object.entries(stats).forEach(([routeName, shapesObj]) => {
     Object.entries(shapesObj).forEach(([shape_id, tripsArr]) => {
-      //console.log(`ShapeID ${shape_id}`);
 
       const shapePts = shapesById[shape_id] || [];
       const distance = shapePts.length > 1 ? Number(shapeDistance(shapePts).toFixed(3)) : 0;
@@ -56,16 +51,13 @@ function generateRouteStatsTable(filteredTrips, routes) {
     });
   });
 
-  // Render table to a canvas or HTML table
   renderStatsTable(rows);
 }
 
-// Store generated rows for download
 let lastStatsRows = [];
 
-// Example rendering as HTML table (you can adapt for canvas)
 function renderStatsTable(rows) {
-  lastStatsRows = rows; // Save for download
+  lastStatsRows = rows; 
 
   const container = document.getElementById('routeStatsTable');
   let html = `<table>
@@ -128,7 +120,6 @@ function downloadStatsCSV(rows) {
   URL.revokeObjectURL(url);
 }
 
-// Utility functions (reuse from main.js or import)
 function timeToSeconds(t) {
   const [h, m, s] = t.split(':').map(Number);
   return h * 3600 + m * 60 + s;
@@ -145,13 +136,11 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 }
 
 
-//#region Compare Services
 function populateCompareServiceDateFilters() {
   const sel1 = document.getElementById('compareServiceDate1');
   const sel2 = document.getElementById('compareServiceDate2');
   if (!sel1 || !sel2) return;
 
-  // Build options (same as updateServiceDateFilterUI, but single-select)
   let options = [];
   for (const label in genericWeekdayDates) {
     options.push(`<option value="GENERIC:${label}">${label}</option>`);
@@ -165,12 +154,9 @@ function populateCompareServiceDateFilters() {
   sel2.innerHTML = options.join('');
 }
 
-// --- Compare Service-Dates Button Handler ---
 function setupCompareServiceDatesFeature() {
-  // Populate filters on load and after GTFS load
   if (serviceDateFilterMode) populateCompareServiceDateFilters();
 
-  // Re-populate after GTFS load or calendar change
   const origUpdateServiceDateFilterUI = updateServiceDateFilterUI;
   updateServiceDateFilterUI = function() {
     origUpdateServiceDateFilterUI();
@@ -186,29 +172,22 @@ function setupCompareServiceDatesFeature() {
       alert('Please select both service-dates.');
       return;
     }
-    // Get current route type and route name filter selections
     const types = Array.from(document.getElementById('routeTypeSelect').selectedOptions).map(o => o.value);
     const names = Array.from(document.getElementById('routeShortNameSelect').selectedOptions).map(o => o.value);
 
-    // --- Set main service date filter to the two selected dates ---
     const mainServiceDateSelect = document.getElementById('serviceDateSelect');
     if (mainServiceDateSelect) {
-      // Deselect all first
       Array.from(mainServiceDateSelect.options).forEach(opt => opt.selected = false);
-      // Select the two dates
       Array.from(mainServiceDateSelect.options).forEach(opt => {
         if (opt.value === val1 || opt.value === val2) opt.selected = true;
       });
-      // Trigger onchange to run filterTrips
       mainServiceDateSelect.dispatchEvent(new Event('change'));
-      // Wait for filterTrips to finish (if it's async)
       if (typeof filterTrips === "function") await filterTrips();
     }
 
 
     RecomputeMap();
 
-    // Helper: get all service_ids for a service-date value
     function getServiceIdsFor(val) {
       let sids = new Set();
       if (val.startsWith('GENERIC:')) {
@@ -224,7 +203,6 @@ function setupCompareServiceDatesFeature() {
     const sids1 = getServiceIdsFor(val1);
     const sids2 = getServiceIdsFor(val2);
 
-    // Filter trips for each service-date, route type, and route name
     function tripsFor(sids) {
       return trips.filter(t =>
         types.includes(t.route.route_type) &&
@@ -235,7 +213,6 @@ function setupCompareServiceDatesFeature() {
     const trips1 = tripsFor(sids1);
     const trips2 = tripsFor(sids2);
 
-    // Group trips by route_id
     function groupByRoute(tripArr) {
       const map = {};
       tripArr.forEach(t => {
@@ -247,19 +224,16 @@ function setupCompareServiceDatesFeature() {
     const byRoute1 = groupByRoute(trips1);
     const byRoute2 = groupByRoute(trips2);
 
-    // Union of all route_ids in either set
     const allRouteIds = new Set([...Object.keys(byRoute1), ...Object.keys(byRoute2)]);
 
     function computeStats(tripArr) {
       let nTrips = tripArr.length;
-      // Group trips by shape_id
       const tripsByShape = {};
       tripArr.forEach(t => {
         if (!tripsByShape[t.shape_id]) tripsByShape[t.shape_id] = [];
         tripsByShape[t.shape_id].push(t);
       });
 
-      // Vehicle-KM: sum shape distance * #trips for each shape_id
       let totalKm = 0;
       for (const shape_id in tripsByShape) {
         const shapePts = shapesById[shape_id] || [];
@@ -267,7 +241,6 @@ function setupCompareServiceDatesFeature() {
         totalKm += dist * tripsByShape[shape_id].length;
       }
 
-      // Average Trip Time: use getTravelTimes helper
       const travelTimes = getTravelTimes(tripArr);
       const avgTripTime = travelTimes.length
         ? (travelTimes.reduce((a, b) => a + b, 0) / travelTimes.length) / 60
@@ -280,18 +253,15 @@ function setupCompareServiceDatesFeature() {
       };
     }
 
-    // Build table rows
     let rows = [];
     for (const route_id of allRouteIds) {
       const t1 = byRoute1[route_id] || [];
       const t2 = byRoute2[route_id] || [];
-      // Route info
       let route = routes.find(r => r.route_id === route_id);
       let routeName = route ? `${route.route_short_name} - ${route.route_long_name}` : '';
       let stats1 = t1.length ? computeStats(t1) : { nTrips:'', totalKm:'', avgTripTime:'' };
       let stats2 = t2.length ? computeStats(t2) : { nTrips:'', totalKm:'', avgTripTime:'' };
       
-      // Log travel times for debugging
       if (t1.length) {
         const travelTimes1 = t1.map(trip => {
           const tripStops = tripStopsMap_analysis[trip.trip_id] || [];
@@ -319,10 +289,8 @@ function setupCompareServiceDatesFeature() {
       ]);
     }
 
-    // Sort: base on routeName, then route_id
     rows.sort((a,b) => (a[0]||'').localeCompare(b[0]||'') || (a[1]||'').localeCompare(b[1]||''));
 
-    // Table header
     const th = `
       <tr>
         <th>Route Name</th>
@@ -346,39 +314,30 @@ function setupCompareServiceDatesFeature() {
 }
 
 
-//#region Helper
-// Helper: calculate shape distance
 function shapeDistance(shapePts) {
-  //Sort by shape_pt_sequence
   shapePts.sort((a, b) => a.shape_pt_sequence - b.shape_pt_sequence);
 
-  // Check for shape_dist_traveled values
   const traveledValues = shapePts
       .map(pt => pt.shape_dist_traveled)
       .filter(val => val !== undefined && val !== null);
 
-  // Only use shape_dist_traveled if there are non-zero values
   const nonZeroTraveled = traveledValues.filter(val => val > 0);
 
   if (nonZeroTraveled.length > 0) {
-      //If available, return the maximum value
       return Math.max(...nonZeroTraveled);
   } else {
-      //Otherwise, calculate manually
       let dist = 0;
       for (let i = 1; i < shapePts.length; i++) {
       dist += 0.001 * calculateDistance(
           shapePts[i - 1].lat, shapePts[i - 1].lon,
           shapePts[i].lat, shapePts[i].lon
-      ); // Convert to kilometers
+      ); 
       }
       return dist;
   }
 }
 
-  // Helper: get travel times for all trips with shape_id
   function getTravelTimes(trips) {
-    //console.log(`Computing Travel Time`);
 
     return trips.map(trip => {
         const tripStops = tripStopsMap_analysis[trip.trip_id] || [];
@@ -389,9 +348,7 @@ function shapeDistance(shapePts) {
     }).filter(t => t !== null);
   }
 
-  // Helper: get first/last station for a trip
   function getFirstLastStations(trip) {
-    //console.log(`For trip${trip.trip_id}. Trying to find first and last stations.`);
 
     const tripStops = stopTimes.filter(st => st.trip_id === trip.trip_id)
       .sort((a, b) => a.stop_sequence - b.stop_sequence);
@@ -401,23 +358,19 @@ function shapeDistance(shapePts) {
   }
 
 function RecomputeMap(){
-  // Precompute stopIdToName map  
   stopIdToName = {};
   stops.forEach(s => { stopIdToName[s.id] = s.name; });
 
-   // Precompute stopIdToName map
   tripStopsMap_analysis = {};
   stopTimes.forEach(st => {
   if (!tripStopsMap_analysis[st.trip_id]) tripStopsMap_analysis[st.trip_id] = [];
     tripStopsMap_analysis[st.trip_id].push(st);
   });
-  // Sort each trip's stops by stop_sequence
   Object.values(tripStopsMap_analysis).forEach(stopsArr => {
     stopsArr.sort((a, b) => a.stop_sequence - b.stop_sequence);
   });
 }
 
-//#endregion
 
 // === Run on Load ===
 window.addEventListener('DOMContentLoaded', () => {

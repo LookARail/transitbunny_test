@@ -1,10 +1,7 @@
-// Updated JavaScript: GTFS Animation with Accurate Interpolation Based on Stop Times
-
 let gtfsWorker = null;
 
 // === Global GTFS data ===
 let stops = [];
-//no shapes here because we are using shapesById
 let routes = [];
 let trips = [];
 let stopTimes = [];
@@ -32,7 +29,7 @@ let calendar = [];
 let calendarDates = [];
 let serviceDateDict = {}; // { 'YYYYMMDD': Set(service_id) }
 let genericWeekdayDates = {}; // { 'Monday (Generic)': [date1, date2, ...], ... }
-let serviceDateFilterMode = false; // true if using service-date filter
+let serviceDateFilterMode = false; // true if using service-date filter, but for nearly all GTFS feeds this is false
 
 // === Precomputed maps ===
 let tripStartTimeAndStopMap = {};   // 
@@ -72,14 +69,14 @@ const ROUTE_TYPE_NAMES = {
 const map = L.map('map').setView([0, 0], 13);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-let vehKmPendingPoints = {}; // { route_id: [{ x, y }], ... }
+let vehKmPendingPoints = {}; 
 
 async function loadGtfsFromWebZip() {
   const url = 'gtfs.zip';
   try {
     const res = await fetch(url);
     const buffer = await res.arrayBuffer();
-    await LoadGTFSZipFile(buffer); // Pass raw buffer, not unzipped object
+    await LoadGTFSZipFile(buffer); 
   } catch (err) {
     console.error('Failed to load GTFS ZIP:', err);
   }
@@ -90,7 +87,7 @@ async function loadGtfsFromUserUploadZip(file) {
   reader.onload = async function(e) {
     try {
       const buffer = e.target.result;
-      await LoadGTFSZipFile(buffer); // Pass raw buffer, not unzipped object
+      await LoadGTFSZipFile(buffer); 
     } catch (err) {     
       alert('Failed to load GTFS ZIP: ' + err.message);
     }
@@ -281,17 +278,14 @@ function requestFilteredStopTimesFromWorker(tripIds, timeoutMs = 30000) {
 
 
 function clearAllMapLayersAndMarkers() {
-  // Remove stops layer if present
   if (stopsLayer && map.hasLayer(stopsLayer)) {
     map.removeLayer(stopsLayer);
     stopsLayer = null;
   }
-  // Remove shapes layer if present
   if (shapesLayer && map.hasLayer(shapesLayer)) {
     map.removeLayer(shapesLayer);
     shapesLayer = null;
   }
-  // Remove all vehicle markers
   if (Array.isArray(allVehicleMarkers)) {
     allVehicleMarkers.forEach(marker => {
       if (marker && map.hasLayer(marker)) {
@@ -334,7 +328,6 @@ function buildServiceDateDict() {
   genericWeekdayDates = {};
   serviceDateFilterMode = false;
 
-  // Helper: get all dates between two YYYYMMDD (inclusive)
   function getDatesBetween(start, end) {
     const dates = [];
     let d = new Date(
@@ -403,7 +396,6 @@ function buildServiceDateDict() {
     }
     // For each weekday, if at least 3 dates with no modification, create a "Monday (Generic)" etc entry
     for (const wd in weekdayDates) {
-      //console.log(`Weekday ${wd} has ${weekdayDates[wd].length} unmodified dates`);      
       if (weekdayDates[wd].length >= 3) {
         const label = wd.charAt(0).toUpperCase() + wd.slice(1) + ' (Generic)';
         genericWeekdayDates[label] = weekdayDates[wd].slice(0, 3); // pick first 3
@@ -426,17 +418,14 @@ function updateServiceDateFilterUI() {
   const serviceDateSelect = document.getElementById('serviceDateSelect');
 
   if (serviceDateFilterMode) {
-    // Show service-date, hide serviceId
     serviceDateLabel.style.display = '';
     serviceIdLabel.style.display = 'none';
     serviceIdSelect.style.display = 'none';
 
-    // Build options: generic weekdays first, then all dates sorted
     let options = [];
     for (const label in genericWeekdayDates) {
       options.push(`<option value="GENERIC:${label}">${label}</option>`);
     }
-    // List all dates (YYYYMMDD) sorted
     const allDates = Object.keys(serviceDateDict).sort();
     for (const date of allDates) {
       const y = date.slice(0,4), m = date.slice(4,6), d = date.slice(6,8);
@@ -444,29 +433,24 @@ function updateServiceDateFilterUI() {
     }
     serviceDateSelect.innerHTML = options.join('');
     
-    // --- Limit to 2 selections ---
     serviceDateSelect.onchange = function(e) {
       const selected = Array.from(this.selectedOptions);
       if (selected.length > 2) {
-        // Deselect the last selected option
         selected[selected.length - 1].selected = false;
         alert('You can select up to 2 service dates only.');
       }
       filterTrips();
     };
   } else {
-    // Hide service-date, show serviceId
     serviceDateLabel.style.display = 'none';
     serviceIdLabel.style.display = '';
     serviceIdSelect.style.display = '';
   }
 }
 
-//#endregion  ParseData
 
 
 
-// === Data Relationships & Filters ===
 function initializeTripsRoutesShape(tripsArr, routesArr) {
   shortAndLongNamesByType = {};
 
@@ -474,13 +458,11 @@ function initializeTripsRoutesShape(tripsArr, routesArr) {
   routeTypes = [...new Set(routesArr.map(r => r.route_type))];
   serviceIds = [...new Set(tripsArr.map(t => t.service_id))];
   
-   // Assign route object to each trip first!
   tripsArr.forEach(t => t.route = routeMap.get(t.route_id));
 
-  // --- Assign route_color to shapes ---
   if (shapesById) {
     Object.values(tripsArr).forEach(trip => {
-      const route = routeMap.get(trip.route_id); //asign route
+      const route = routeMap.get(trip.route_id); 
       if (route)
       {
         shapesRoute[trip.shape_id] = route;      
@@ -488,13 +470,12 @@ function initializeTripsRoutesShape(tripsArr, routesArr) {
     });
   }
 
-  // Build shortNamesByType per route_type
   routesArr.forEach(r => {
     if (!shortAndLongNamesByType[r.route_type]) shortAndLongNamesByType[r.route_type] = new Set();
     shortAndLongNamesByType[r.route_type].add(`${r.route_short_name}-${r.route_long_name}`);
   });
 
-  shortNameToServiceIds = {}; // Reset mapping
+  shortNameToServiceIds = {}; 
   tripsArr.forEach(t => {
     const key = `${t.route.route_short_name}-${t.route.route_long_name}`;
     if (!shortNameToServiceIds[key]) shortNameToServiceIds[key] = new Set();
@@ -524,7 +505,6 @@ function populateFilters() {
   rtSel.onchange = filterTrips;
   svSel.onchange = filterTrips;
 
-  // When route‐type changes, update short‐names dropdown
   rtSel.onchange = () => {
     const chosen = Array.from(rtSel.selectedOptions).map(o => o.value);
     let names = new Set();
@@ -538,7 +518,6 @@ function populateFilters() {
     shSel.dispatchEvent(new Event('change')); // trigger short name change
   };
 
-  // When short-name changes, update service IDs dropdown
   shSel.onchange = () => {
     const chosenNames = Array.from(shSel.selectedOptions).map(o => o.value);
     let validServiceIds = new Set();
@@ -551,12 +530,10 @@ function populateFilters() {
 
   svSel.onchange = filterTrips;
 
-  // Service-date filter
   if (sdSel) {
     sdSel.onchange = filterTrips;
   }
 
-  // trigger initial population of short names
   rtSel.dispatchEvent(new Event('change'));
 }
 
@@ -588,7 +565,6 @@ async function filterTrips(useAllServiceDates = false) {
       selectedServiceIdsArr.push(ids);
     }
 
-    // Filter for each service date
     if (selectedServiceIdsArr.length > 0 || useAllServiceDates) {
       filteredTrips1 = trips.filter(t =>
         types.includes(t.route.route_type) &&
@@ -625,8 +601,6 @@ async function filterTrips(useAllServiceDates = false) {
     filteredTrips2 = [];
   }
 
-  //clear and rebuild stopTimes for filteredTrips, if there there is >0 filteredTrips
-  //new stopTimes are added here
   
   const haveTrips = new Set(stopTimes.map(r => String(r.trip_id)));
   const missingTripIds = filteredTrips.filter(tid => !haveTrips.has(String(tid.trip_id)));
@@ -655,18 +629,15 @@ async function filterTrips(useAllServiceDates = false) {
         }
       }
     });
-    console.log(`Filtered trips: ${filteredTrips.length}, Filtered stopTimes: ${stopTimes.length}, Unique trip start times: ${Object.keys(tripStartTimeAndStopMap).length}`);    
+
   }
 }
 
-// Skip markercluster plugin overhead entirely below this count
 let skipAggregatingStopThreshold = 200;
 function plotFilteredStopsAndShapes(tripsToShow) {
-  // Remove old layers
   if (stopsLayer && map.hasLayer(stopsLayer)) map.removeLayer(stopsLayer);
   if (shapesLayer && map.hasLayer(shapesLayer)) map.removeLayer(shapesLayer);
 
-  // --- decide which stops/shapes to plot (unchanged) ---
   let stopsToPlot;
   let shapesToPlot = [];
 
@@ -689,18 +660,15 @@ function plotFilteredStopsAndShapes(tripsToShow) {
   }
 
 
-  // --- Adaptive clustering: scale cluster radius by number of stops (continuous) ---
   const totalStops = stopsToPlot.length;
 
-  // Parameters you can tune:
-  const basePixels = 60;         // pixel radius at ref zoom when scale==1
-  const refZoom = 14;            // zoom where basePixels is meaningful
-  const clampMaxPx = 100;        // absolute max pixel radius to avoid giant bubbles
-  const minMultiplier = 0.20;    // smallest fraction of basePixels when stops are few
-  const minCount = 200;          // lower edge of scaling (below this -> mostly small radius)
-  const maxCount = 3000;        // upper edge of scaling (above this -> full radius)
+  const basePixels = 60;        
+  const refZoom = 14;         
+  const clampMaxPx = 100;      
+  const minMultiplier = 0.20;    
+  const minCount = 200;      
+  const maxCount = 3000;    
 
-  // smoothstep helper: maps x in [a,b] -> 0..1 smoothly
   function smoothstep(a, b, x) {
     if (x <= a) return 0;
     if (x >= b) return 1;
@@ -708,18 +676,13 @@ function plotFilteredStopsAndShapes(tripsToShow) {
     return t * t * (3 - 2 * t);
   }
 
-  // map count -> scale [0..1]
   const rawScale = smoothstep(minCount, maxCount, totalStops);
-  // final multiplier between minMultiplier .. 1.0
   const multiplier = minMultiplier + (1 - minMultiplier) * rawScale;
 
-  // Create stopsLayer using a radius function that incorporates multiplier
   stopsLayer = (typeof L.markerClusterGroup === 'function')
     ? L.markerClusterGroup({
         chunkedLoading: true,
-        // maxClusterRadius gets zoom param -> return pixel radius
         maxClusterRadius: function (zoom) {
-          // exponential zoom scaling (same idea as before): basePixels * 2^(refZoom - zoom)
           const zoomScaledBase = basePixels * Math.pow(2, refZoom - zoom);
           const px = Math.max(6, Math.round(zoomScaledBase * multiplier));
           return Math.min(clampMaxPx, px);
@@ -731,7 +694,6 @@ function plotFilteredStopsAndShapes(tripsToShow) {
 
      if (totalStops <= skipAggregatingStopThreshold) stopsLayer = L.layerGroup();
 
-  // --- Add clustered stops ---
   for (const stop of stopsToPlot) {
     const marker = L.circleMarker([stop.lat, stop.lon], {
       radius: 4,
@@ -742,14 +704,12 @@ function plotFilteredStopsAndShapes(tripsToShow) {
     stopsLayer.addLayer(marker);
   }
 
-  // --- Add shapes (unchanged) ---
   shapesLayer = L.layerGroup();
   const shapesGrouped = {};
   for (const s of shapesToPlot) {
     if (!shapesGrouped[s.shape_id]) shapesGrouped[s.shape_id] = [];
     shapesGrouped[s.shape_id].push(s);
   }
-  //draw bus routes (route_type === 3)
   for (const shape_id in shapesGrouped) {
     const shapePoints = shapesGrouped[shape_id]
       .sort((a, b) => a.sequence - b.sequence)
@@ -762,13 +722,12 @@ function plotFilteredStopsAndShapes(tripsToShow) {
         color: color,
         weight: 2,
         interactive: true,
-        touchTolerance: 80 // increases tap area
+        touchTolerance: 80 
       });
       shapesLayer.addLayer(polyline);
     }
   }
 
-  // Then, draw non-bus routes (route_type !== 3) on top
   for (const shape_id in shapesGrouped) {
     const shapePoints = shapesGrouped[shape_id]
       .sort((a, b) => a.sequence - b.sequence)
@@ -781,7 +740,7 @@ function plotFilteredStopsAndShapes(tripsToShow) {
         color: color,
         weight: 3,
         interactive: true,
-        touchTolerance: 80 // increases tap area
+        touchTolerance: 80 
       });
       shapesLayer.addLayer(polyline);
     }
@@ -790,7 +749,6 @@ function plotFilteredStopsAndShapes(tripsToShow) {
   stopsLayer.addTo(map);
   shapesLayer.addTo(map);
 
-  // Fit bounds
   const allCoords = [
     ...stopsToPlot.map(s => [s.lat, s.lon]),
     ...shapesToPlot.map(s => [s.lat, s.lon])
@@ -800,7 +758,6 @@ function plotFilteredStopsAndShapes(tripsToShow) {
     map.fitBounds(bounds);
   }
 
-  //make the shapes interactable
   setupShapeHoverInfo();
 }
 
@@ -815,13 +772,11 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 }
 
 
-// === Utility: Parse HH:MM:SS into seconds ===
 function timeToSeconds(t) {
   const [h, m, s] = t.split(':').map(Number);
   return h * 3600 + m * 60 + s;
 }
 
-// === Interpolate times between stops (distance-based) ===
 function interpolateTripPath(trip) {
   const tripStops = stopTimes.filter(st=>st.trip_id===trip.trip_id).sort((a,b)=>a.stop_sequence-b.stop_sequence);
   const shapePts = (shapesById[trip.shape_id] || []).slice().sort((a,b)=>a.sequence-b.sequence);
@@ -846,16 +801,13 @@ function interpolateTripPath(trip) {
   return timedPath;
 }
 
-// === Animation Controls ===
 function initializeAnimation() {
-  // Clear the trip plot data
   tripPlotData.labels = [];
   tripPlotData.datasets[0].data = [];
   tripPlotData.datasets[1].data = [];
   if (tripPlotChart) tripPlotChart.update();
   hourTicks = [];
 
-  //clear the vehicle km chart data
   vehKmData = {};
   if (vehKmChart) {
     vehKmChart.data.datasets = [];
@@ -863,18 +815,13 @@ function initializeAnimation() {
     vehKmChart.update();
   }
 
-  // For coloring and plotting
   window.tripIds1 = new Set(filteredTrips1.map(t => t.trip_id));
   window.tripIds2 = new Set(filteredTrips2.map(t => t.trip_id));
 
   if (!filteredTrips.length) { alert('No trips match filters'); return; }
-  // compute startTime for filtered trips and find earliest
-
-  // filter geometry
 
   plotFilteredStopsAndShapes(filteredTrips);
 
-  // prepare remaining
   remainingTrips = filteredTrips.map(t => {
     t.startTime = tripStartTimeAndStopMap[t.trip_id]?.departureTimeSec ?? null;
     return t;
@@ -885,7 +832,6 @@ function initializeAnimation() {
     if (!blockIdTripMap[t.block_id]) blockIdTripMap[t.block_id] = [];
     blockIdTripMap[t.block_id].push(t);
   });
-  // Sort each block's trips by startTime
   Object.values(blockIdTripMap).forEach(arr => arr.sort((a, b) => a.startTime - b.startTime));
   Object.values(blockIdTripMap).forEach(tripArr => {for (let i = 0; i < tripArr.length - 1; i++) {tripArr[i].nextTrip = tripArr[i + 1];}
   });
@@ -902,7 +848,6 @@ function initializeAnimation() {
 
   buildMostCommonShapeIdByRouteDir();
 
-  // determine earliest start time among remainingTrips
   animationTime = remainingTrips.reduce((min, t) => Math.min(min, t.startTime), Infinity);
 
   if (animationTime === Infinity) { alert('No valid stop times'); return; }
@@ -934,14 +879,12 @@ function UpdateAnimationOnAnimationTimeChange(){
 
 
 function UpdateVehiclePositions(){
-    // activate trips whose startTime <= now
     remainingTrips = remainingTrips.filter(t=>{
       if(t.startTime<=animationTime) {
         const path = interpolateTripPath(t);
-        path.parentTrip = t;  // Store reference to parent trip        
+        path.parentTrip = t;         
         if(path.length) {
           tripPaths.push(path);
-          // If inheriting marker from previous block, use it
           if (t._inheritedMarker) {
             vehicleMarkersWithActiveTrip.push(t._inheritedMarker);
             if(!allVehicleMarkers.includes(t._inheritedMarker)) {
@@ -955,7 +898,7 @@ function UpdateVehiclePositions(){
               fillColor: (window.tripIds2 && window.tripIds2.has(t.trip_id) && (!window.tripIds1 || !window.tripIds1.has(t.trip_id))) ? 'orange' : 'green',
               fillOpacity: 1
             }).addTo(map);
-            m.parentTrip = t; // Store reference to parent trip
+            m.parentTrip = t;
             allVehicleMarkers.push(m);
             vehicleMarkersWithActiveTrip.push(m);
           }
@@ -965,17 +908,13 @@ function UpdateVehiclePositions(){
       return true;
     });
 
-  // Update active vehicles and remove finished ones
     for (let i = tripPaths.length - 1; i >= 0; i--) {
       const path = tripPaths[i];
       const endTime = path[path.length - 1].time;
       if (animationTime >= endTime) {
-        // Trip finished: try to connect to next trip with same block_id
         const finishedTrip =path.parentTrip;
-        //console.log(`Trip ${finishedTrip.trip_id} finished at ${formatTime(endTime)}. Trying to find next connection`);
 
         if (finishedTrip){
-            //update the veh-kilometer plot
             const shapePts = shapesById[finishedTrip.shape_id] || [];
             let tripDistanceKm = 0;
             if (shapePts.length > 1) {
@@ -986,11 +925,9 @@ function UpdateVehiclePositions(){
 
         if (finishedTrip && finishedTrip.block_id) {
           const tripsForBlock = blockIdTripMap[finishedTrip.block_id] || [];
-          // Find the next trip with startTime > endTime
           const nextTrip = finishedTrip.nextTrip;
             if (nextTrip && nextTrip.startTime > endTime && remainingTrips.includes(nextTrip)) {
-            //there is a next trip with the same blockID
-            // Calculate distance and layover
+
             const endPos = path[path.length - 1];            
             const startStopId = tripStartTimeAndStopMap[nextTrip.trip_id].stop_id;
             const startStop = stops.find(s => s.id === startStopId);
@@ -1000,31 +937,25 @@ function UpdateVehiclePositions(){
             let msg = `Block ${finishedTrip.block_id} involving trips ${finishedTrip.trip_id} and ${nextTrip.trip_id}: Layover ${Math.round(layover / 60)} min, Distance ${Math.round(dist)} m`;
 
             if ((layover > 7200) || ((dist > 400 || layover < 7200) && (dist / layover > 5))) {
-              //if the two trips are > 2hrs apart, treat them as two unrelated trips
-              //another case is if the trips are >400m apart and within 2hrs connection, and the speed is > 5m/s (18km/h). Treat this case as if the block_id is miscoded, and the trip is not the same physical vehicl
               msg += " ALERT: This is not considered a connection although the trips share the same block_id";
               msg += `DEBUG: endPos=${endPos.lat}${endPos.lon}, startStop=${startStop.lat}${startStop.lon}, startStopId=${startStopId}`;
               console.log(msg);
             }else{              
-              // Inherit marker for next trip
               nextTrip._inheritedMarker = vehicleMarkersWithActiveTrip[i];
-              vehicleMarkersWithActiveTrip[i].setLatLng([startStop.lat, startStop.lon]); //move the marker to the start of the next trip
+              vehicleMarkersWithActiveTrip[i].setLatLng([startStop.lat, startStop.lon]); 
   
-              // Remove path and marker from current arrays, but don't remove marker from map
               tripPaths.splice(i, 1);
               vehicleMarkersWithActiveTrip.splice(i, 1);    
               continue;
             }
           }
         }
-        // No next trip: remove marker and path
         map.removeLayer(vehicleMarkersWithActiveTrip[i]);
-        allVehicleMarkers = allVehicleMarkers.filter(m => m !== vehicleMarkersWithActiveTrip[i]); //remove from allVehicleMarkers        
+        allVehicleMarkers = allVehicleMarkers.filter(m => m !== vehicleMarkersWithActiveTrip[i]);     
         vehicleMarkersWithActiveTrip.splice(i, 1);
         tripPaths.splice(i, 1);
         continue;
       }
-      // Animate marker as usual
       const idx = timedIndex(animationTime, path);
       if (idx >= 0 && idx < path.length - 1) {
         const a = path[idx], b = path[idx + 1];
@@ -1035,7 +966,6 @@ function UpdateVehiclePositions(){
       }
     }
 
-    // Stop when no trips remain and all animated complete
     if (!remainingTrips.length && tripPaths.every(path => path[path.length - 1].time <= animationTime)) {
       stopAnimation();
     }
@@ -1045,41 +975,33 @@ function UpdateVehiclePositions(){
 
 function stopAnimation() {  
 
-  // 1) Clear the running interval
   if (animationTimer) {
     clearInterval(animationTimer);
     animationTimer = null;
   }
 
-  // 2) Remove all vehicle markers from the map
   allVehicleMarkers.forEach(marker => {
     if (marker && map.hasLayer(marker)) {
       map.removeLayer(marker);
     }
   });
   allVehicleMarkers = [];
-  updateTripPlot(animationTime); // Final update to trip plot
+  updateTripPlot(animationTime); 
 
-    // append the final data point to the 
   const nextHour = Math.ceil(animationTime / 3600);
   updateHeadwayPlotForHour(nextHour-1);
 
-  // 3) Reset all trip/animation state
   tripPaths = [];
   remainingTrips = [];
   vehicleMarkersWithActiveTrip = [];
 
-  // 4) Reset the clock
   animationTime = null;  
   document.getElementById('timeDisplay').textContent = '00:00:00';
   
-  // 5) Reset pause button label
   const pauseButton = document.getElementById('pauseButton');
   if (pauseButton) pauseButton.textContent = '⏯️ Pause';
 }
 
-
-// === Helper: find segment index by time using binary search ===
 function timedIndex(time, path) {
   let low = 0, high = path.length - 1;
   while (low <= high) {
@@ -1100,13 +1022,11 @@ function formatTime(seconds) {
   return `${h}:${m}:${s}`;
 }
 
-//pause function
 function togglePauseResume(){
   const pauseButton = document.getElementById('pauseButton');
   if (animationTimer) {
     clearInterval(animationTimer);
-    animationTimer = null;
-    console.log("Simulation paused.");
+    animationTimer = null;    
     pauseButton.textContent = '⏯️ Resume';
   }else{
     pauseButton.textContent = '⏯️ Pause';
@@ -1116,14 +1036,13 @@ function togglePauseResume(){
   }
 }
 
-//speed control
 function changeAnimationSpeed(){
     speedMultiplier = parseFloat(document.getElementById('speedSelect').value);
 }
 
 function showProgressBar() {
   document.getElementById('progressBarContainer').style.display = 'block';  
-  document.getElementById('uiBlockOverlay').style.display = 'block'; //when loading data, block UI interaction
+  document.getElementById('uiBlockOverlay').style.display = 'block';
 }
 function setProgressBar(percent, mainText) {
   if (!mainText){
@@ -1134,7 +1053,7 @@ function setProgressBar(percent, mainText) {
 }
 function hideProgressBar() {
   document.getElementById('progressBarContainer').style.display = 'none';
-  document.getElementById('uiBlockOverlay').style.display = 'none'; // unlock UI interaction
+  document.getElementById('uiBlockOverlay').style.display = 'none'; 
 }
 
 function showTransitScorePopup(msg) {
@@ -1167,8 +1086,7 @@ function updateLegendFontSizeForMobile() {
   if (tripsPerHourChart) {
     tripsPerHourChart.options.plugins.legend.labels.font.size = legendFontSize;
     tripsPerHourChart.options.plugins.title.font.size = titleFontSize;
-    tripsPerHourChart.update();
-    console.log(`Updated legend font size for mobile: ${legendFontSize}`);
+    tripsPerHourChart.update();    
   }
 }
 
@@ -1183,7 +1101,7 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('routeTypeSelect');
   document.getElementById('serviceIdSelect');
   document.getElementById('playBtn').addEventListener('click', () => {
-    stopAnimation(); // Stop any existing animation first
+    stopAnimation(); 
     initializeAnimation();
     startAnimation();
   });
@@ -1196,10 +1114,8 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('speedSelect').addEventListener('change', changeAnimationSpeed);
 
   document.getElementById('updateMapBtn').addEventListener('click', async function() {
-    // Use the same logic as at the start of simulation
     stopAnimation();
-    await filterTrips(true); // pass true to use all service dates
-    console.log(`Filtered trips: ${filteredTrips.length}`);
+    await filterTrips(true);     
     plotFilteredStopsAndShapes(filteredTrips);
   });
 
@@ -1216,7 +1132,6 @@ window.addEventListener('DOMContentLoaded', () => {
   updateLegendFontSizeForMobile();
   setupTransitScoreMapClickHandler();
 
-  // Ribbon icon toggle logic (not mutually exclusive)
   document.querySelectorAll('.ribbon-icon').forEach(btn => {
     btn.addEventListener('click', function() {
       const canvasId = this.getAttribute('data-canvas');
@@ -1225,7 +1140,6 @@ window.addEventListener('DOMContentLoaded', () => {
       const canvas = document.getElementById(canvasId);
       const isActive = this.classList.contains('active');
 
-      // Toggle active state and canvas visibility
       if (isActive) {
         this.classList.remove('active');
         if (canvas) canvas.style.display = 'none';
@@ -1236,7 +1150,6 @@ window.addEventListener('DOMContentLoaded', () => {
       }
 
       if (window.innerWidth <= 900) {
-        // List of mutually exclusive canvases
         const exclusiveCanvases = ['graphsCanvas', 'statsCanvas', 'transitScoreCanvas'];
           if(exclusiveCanvases.includes(canvasId)) {
           exclusiveCanvases.forEach(id => {
@@ -1254,16 +1167,12 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Tab logic for graphs and stats
   document.querySelectorAll('.canvas-header').forEach(header => {
     header.querySelectorAll('.tab-btn').forEach(tabBtn => {
       tabBtn.addEventListener('click', function() {
-        // Remove active from all tabs in this header
         header.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        // Hide all tab-contents in this canvas
         const canvas = header.parentElement;
         canvas.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
-        // Activate this tab
         this.classList.add('active');
         const tabId = this.getAttribute('data-tab');
         canvas.querySelector(`#${tabId}`).classList.add('active');
@@ -1287,25 +1196,20 @@ window.addEventListener('DOMContentLoaded', () => {
     sel.dispatchEvent(new Event('change'));
   };
 
-  // Handle all close-canvas buttons
   document.querySelectorAll('.close-canvas-btn').forEach(btn => {
     btn.onclick = function() {
-      // Find the parent floating-canvas
       let canvas = btn.closest('.floating-canvas');
       if (canvas) canvas.style.display = 'none';
-      // Also deactivate the ribbon icon if needed
       const canvasId = canvas.id;
       document.querySelectorAll(`.ribbon-icon[data-canvas="${canvasId}"]`).forEach(icon => icon.classList.remove('active'));
     };
   });
 
-  // open the first canvas by default
   if (window.innerWidth > 900) {
     document.querySelector('.ribbon-icon[data-canvas="animationCanvas"]').click();
   }
   document.querySelector('.ribbon-icon[data-canvas="helpCanvas"]').click();
 
-  // Make some of the canvas draggable
   ['graphsCanvas', 'statsCanvas', 'helpCanvas', 'animationCanvas'].forEach(canvasId => {
     const canvas = document.getElementById(canvasId);
     if (!canvas) return;
@@ -1352,5 +1256,5 @@ window.addEventListener('DOMContentLoaded', () => {
   });
 
   map.createPane('highlightPane');
-  map.getPane('highlightPane').style.zIndex = 399; // lower than overlayPane
+  map.getPane('highlightPane').style.zIndex = 399;
 });

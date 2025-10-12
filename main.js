@@ -156,8 +156,7 @@ async function LoadGTFSZipFile(zipFileInput) {
           console.log('[Worker status]', msg.message);
         } else if (msg.type === 'progress') {
           if (msg.file === 'filtered_stop_times') {
-            setProgressBar(Math.round((msg.progress || 0) * 100), 'Reloading schedule for filtered trips...');           
-            console.log(msg.file + ' progress:', msg.progress);
+            setProgressBar(Math.round((msg.progress || 0) * 100), 'Reloading schedule for filtered trips...');                       
             return;
           }else{
             if (msg.file && weights[msg.file] !== undefined) {

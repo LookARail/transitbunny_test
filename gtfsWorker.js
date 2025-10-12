@@ -489,7 +489,7 @@ onmessage = async function (e) {
         let trips = await parseBlobToObjects(zipFile['trips.txt'], 'trips.txt');
         results.trips = trips;
 
-        trips = null; y
+        trips = null;
       }
 
       // --- shapes ---

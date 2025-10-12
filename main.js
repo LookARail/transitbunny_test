@@ -1258,3 +1258,75 @@ window.addEventListener('DOMContentLoaded', () => {
   map.createPane('highlightPane');
   map.getPane('highlightPane').style.zIndex = 399;
 });
+
+/* added: one-time runtime resize helper (desktop only) ------------------ */
+/**
+ * Append a transient helper to a floating-canvas that points toward its resizer.
+ * The helper auto-hides after 5s. Shown once per session (sessionStorage key).
+ */
+function showResizeHelperOnceForCanvas(canvasEl) {
+  if (!canvasEl) return;
+  if (window.innerWidth <= 900) return; // desktop-only
+  if (sessionStorage.getItem('resizeHelperShown')) return;
+
+  // create helper
+  const helper = document.createElement('div');
+  helper.className = 'resize-helper';
+  helper.innerHTML = `<span class="resize-label">Need to resize?</span><span class="resize-arrow" aria-hidden="true"></span>`;
+  // attach inside canvas so it follows canvas positioning and z-index
+  canvasEl.style.position = canvasEl.style.position || 'fixed';
+  canvasEl.appendChild(helper);
+
+  // try to nudge helper location if canvas has a .resizer element
+  const resizer = canvasEl.querySelector('.resizer');
+  if (resizer) {
+    // place helper slightly above/left of the resizer grip
+    helper.style.right = (parseFloat(getComputedStyle(resizer).right || 12) + 6) + 'px';
+    helper.style.bottom = (parseFloat(getComputedStyle(resizer).bottom || 6) + 6) + 'px';
+  } else {
+    // default offset
+    helper.style.right = '12px';
+    helper.style.bottom = '18px';
+  }
+
+  // mark shown (session only)
+  sessionStorage.setItem('resizeHelperShown', '1');
+
+  // remove after 5s
+  const t = setTimeout(() => {
+    removeResizeHelper(helper);
+    clearTimeout(t);
+  }, 5000);
+
+  // also remove on any pointerdown inside the canvas (user might interact)
+  const onPointerDown = () => {
+    removeResizeHelper(helper);
+    canvasEl.removeEventListener('pointerdown', onPointerDown);
+  };
+  canvasEl.addEventListener('pointerdown', onPointerDown);
+}
+
+function removeResizeHelper(el) {
+  if (!el) return;
+  if (el.parentNode) el.parentNode.removeChild(el);
+}
+
+/* Wire the helper to the ribbon icons.
+   When a graphsCanvas or statsCanvas is opened on desktop, show helper once. */
+document.addEventListener('DOMContentLoaded', () => {
+  // Add lightweight listener that runs after the existing ribbon click handlers.
+  document.querySelectorAll('.ribbon-icon').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const canvasId = this.getAttribute('data-canvas');
+      if (!canvasId) return;
+      // run shortly after UI toggles so we can detect visibility
+      setTimeout(() => {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        if (canvas.style.display !== 'none' && (canvasId === 'graphsCanvas' || canvasId === 'statsCanvas')) {
+          showResizeHelperOnceForCanvas(canvas);
+        }
+      }, 120);
+    });
+  });
+});

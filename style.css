@@ -101,6 +101,7 @@ html, body {
 
     .tooltip {
     position: relative;
+    overflow:visible;
     cursor: pointer;
     }
 
@@ -1525,4 +1526,5 @@ html, body, #controls, .canvas-content {
 /* hide the help icon on small screens (touch devices) */
 @media (max-width: 900px) {
   .headway-help { display: none !important; }
+
 }

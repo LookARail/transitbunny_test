@@ -688,7 +688,6 @@ html, body {
   min-width: 26%;
   max-width: 40%;
   white-space: nowrap;
-  overflow: hidden;
   text-overflow: ellipsis;
   margin: 0;
   padding-right: 6px;
@@ -1529,4 +1528,5 @@ html, body, #controls, .canvas-content {
   .headway-help { display: none !important; }
 
 }
+
 
